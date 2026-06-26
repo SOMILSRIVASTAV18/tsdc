@@ -16,6 +16,12 @@ import { db } from "./firebase";
 import { Blog, Career, FAQ, PageContent, Inquiry, JobApplication, ChatMessage, ChatSession } from "../types";
 import { DEFAULT_PAGE_CONTENT, DEFAULT_BLOGS, DEFAULT_CAREERS, DEFAULT_FAQS } from "../data/defaults";
 
+// --- IN-MEMORY CACHE ---
+let cachedPageContent: PageContent | null = null;
+let cachedBlogs: Blog[] | null = null;
+let cachedCareers: Career[] | null = null;
+let cachedFAQs: FAQ[] | null = null;
+
 // --- HELPERS ---
 const handleFirebaseError = (error: unknown, fallback: any) => {
   console.warn("Firestore error, utilizing default memory state:", error);
@@ -23,29 +29,40 @@ const handleFirebaseError = (error: unknown, fallback: any) => {
 };
 
 // --- PAGE CONTENT CONFIG ---
-export const getPageContent = async (): Promise<PageContent> => {
+export const getPageContent = async (forceRefresh = false): Promise<PageContent> => {
+  if (cachedPageContent && !forceRefresh) {
+    return cachedPageContent;
+  }
   try {
     const configDocRef = doc(db, "site_content", "agency_config");
     const docSnap = await getDoc(configDocRef);
     if (docSnap.exists()) {
-      return docSnap.data() as PageContent;
+      cachedPageContent = docSnap.data() as PageContent;
+      return cachedPageContent;
     } else {
       // Seed on-demand or return default
       await setDoc(configDocRef, DEFAULT_PAGE_CONTENT);
+      cachedPageContent = DEFAULT_PAGE_CONTENT;
       return DEFAULT_PAGE_CONTENT;
     }
   } catch (err) {
-    return handleFirebaseError(err, DEFAULT_PAGE_CONTENT);
+    cachedPageContent = handleFirebaseError(err, DEFAULT_PAGE_CONTENT);
+    return cachedPageContent;
   }
 };
 
 export const updatePageContent = async (content: Partial<PageContent>): Promise<void> => {
   const configDocRef = doc(db, "site_content", "agency_config");
-  await setDoc(configDocRef, { ...DEFAULT_PAGE_CONTENT, ...content }, { merge: true });
+  const merged = { ...DEFAULT_PAGE_CONTENT, ...cachedPageContent, ...content };
+  await setDoc(configDocRef, merged, { merge: true });
+  cachedPageContent = merged;
 };
 
 // --- BLOGS ---
-export const getBlogs = async (): Promise<Blog[]> => {
+export const getBlogs = async (forceRefresh = false): Promise<Blog[]> => {
+  if (cachedBlogs && !forceRefresh) {
+    return cachedBlogs;
+  }
   try {
     const blogsCol = collection(db, "blogs");
     const q = query(blogsCol, orderBy("publishedAt", "desc"));
@@ -56,25 +73,44 @@ export const getBlogs = async (): Promise<Blog[]> => {
       for (const blog of DEFAULT_BLOGS) {
         await setDoc(doc(db, "blogs", blog.id), blog);
       }
-      return DEFAULT_BLOGS;
+      cachedBlogs = [...DEFAULT_BLOGS];
+      return cachedBlogs;
     }
     
-    return querySnapshot.docs.map(doc => doc.data() as Blog);
+    cachedBlogs = querySnapshot.docs.map(doc => doc.data() as Blog);
+    return cachedBlogs;
   } catch (err) {
-    return handleFirebaseError(err, DEFAULT_BLOGS);
+    cachedBlogs = handleFirebaseError(err, DEFAULT_BLOGS);
+    return cachedBlogs;
   }
 };
 
 export const saveBlog = async (blog: Blog): Promise<void> => {
   await setDoc(doc(db, "blogs", blog.id), blog);
+  if (cachedBlogs) {
+    const idx = cachedBlogs.findIndex(b => b.id === blog.id);
+    if (idx > -1) {
+      cachedBlogs[idx] = blog;
+    } else {
+      cachedBlogs = [blog, ...cachedBlogs];
+    }
+  } else {
+    cachedBlogs = [blog];
+  }
 };
 
 export const deleteBlog = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, "blogs", id));
+  if (cachedBlogs) {
+    cachedBlogs = cachedBlogs.filter(b => b.id !== id);
+  }
 };
 
 // --- CAREERS ---
-export const getCareers = async (): Promise<Career[]> => {
+export const getCareers = async (forceRefresh = false): Promise<Career[]> => {
+  if (cachedCareers && !forceRefresh) {
+    return cachedCareers;
+  }
   try {
     const careersCol = collection(db, "careers");
     const querySnapshot = await getDocs(careersCol);
@@ -84,25 +120,44 @@ export const getCareers = async (): Promise<Career[]> => {
       for (const career of DEFAULT_CAREERS) {
         await setDoc(doc(db, "careers", career.id), career);
       }
-      return DEFAULT_CAREERS;
+      cachedCareers = [...DEFAULT_CAREERS];
+      return cachedCareers;
     }
     
-    return querySnapshot.docs.map(doc => doc.data() as Career);
+    cachedCareers = querySnapshot.docs.map(doc => doc.data() as Career);
+    return cachedCareers;
   } catch (err) {
-    return handleFirebaseError(err, DEFAULT_CAREERS);
+    cachedCareers = handleFirebaseError(err, DEFAULT_CAREERS);
+    return cachedCareers;
   }
 };
 
 export const saveCareer = async (career: Career): Promise<void> => {
   await setDoc(doc(db, "careers", career.id), career);
+  if (cachedCareers) {
+    const idx = cachedCareers.findIndex(c => c.id === career.id);
+    if (idx > -1) {
+      cachedCareers[idx] = career;
+    } else {
+      cachedCareers = [career, ...cachedCareers];
+    }
+  } else {
+    cachedCareers = [career];
+  }
 };
 
 export const deleteCareer = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, "careers", id));
+  if (cachedCareers) {
+    cachedCareers = cachedCareers.filter(c => c.id !== id);
+  }
 };
 
 // --- FAQS ---
-export const getFAQs = async (): Promise<FAQ[]> => {
+export const getFAQs = async (forceRefresh = false): Promise<FAQ[]> => {
+  if (cachedFAQs && !forceRefresh) {
+    return cachedFAQs;
+  }
   try {
     const faqCol = collection(db, "faqs");
     const querySnapshot = await getDocs(faqCol);
@@ -112,21 +167,37 @@ export const getFAQs = async (): Promise<FAQ[]> => {
       for (const faq of DEFAULT_FAQS) {
         await setDoc(doc(db, "faqs", faq.id), faq);
       }
-      return DEFAULT_FAQS;
+      cachedFAQs = [...DEFAULT_FAQS];
+      return cachedFAQs;
     }
     
-    return querySnapshot.docs.map(doc => doc.data() as FAQ);
+    cachedFAQs = querySnapshot.docs.map(doc => doc.data() as FAQ);
+    return cachedFAQs;
   } catch (err) {
-    return handleFirebaseError(err, DEFAULT_FAQS);
+    cachedFAQs = handleFirebaseError(err, DEFAULT_FAQS);
+    return cachedFAQs;
   }
 };
 
 export const saveFAQ = async (faq: FAQ): Promise<void> => {
   await setDoc(doc(db, "faqs", faq.id), faq);
+  if (cachedFAQs) {
+    const idx = cachedFAQs.findIndex(f => f.id === faq.id);
+    if (idx > -1) {
+      cachedFAQs[idx] = faq;
+    } else {
+      cachedFAQs = [faq, ...cachedFAQs];
+    }
+  } else {
+    cachedFAQs = [faq];
+  }
 };
 
 export const deleteFAQ = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, "faqs", id));
+  if (cachedFAQs) {
+    cachedFAQs = cachedFAQs.filter(f => f.id !== id);
+  }
 };
 
 // --- INQUIRIES ---

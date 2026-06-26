@@ -16,10 +16,11 @@ import {
 } from "lucide-react";
 import { Career } from "../types";
 import { getCareers, submitJobApplication } from "../lib/db";
+import { DEFAULT_CAREERS } from "../data/defaults";
 
 export default function CareersView() {
-  const [careers, setCareers] = useState<Career[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [careers, setCareers] = useState<Career[]>(DEFAULT_CAREERS);
+  const [loading, setLoading] = useState(false);
   const [selectedDept, setSelectedDept] = useState<string>("All");
   const [activeJobForModal, setActiveJobForModal] = useState<Career | null>(null);
   

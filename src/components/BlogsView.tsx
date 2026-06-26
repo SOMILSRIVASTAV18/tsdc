@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Blog } from "../types";
 import { getBlogs } from "../lib/db";
+import { DEFAULT_BLOGS } from "../data/defaults";
 
 interface BlogsViewProps {
   activeBlogSlug?: string;
@@ -16,8 +17,8 @@ interface BlogsViewProps {
 }
 
 export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps) {
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [blogs, setBlogs] = useState<Blog[]>(DEFAULT_BLOGS);
+  const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [activeBlog, setActiveBlog] = useState<Blog | null>(null);
 

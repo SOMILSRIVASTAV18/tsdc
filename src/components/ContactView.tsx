@@ -53,7 +53,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
         message: message
       });
 
-      // Animate tracker status sequence
+      // Animate tracker status sequence (optimized 300ms intervals for instant feel)
       setTimeout(() => {
         setTrackerStep(2); // Step 2: dispatch client email
         setTimeout(() => {
@@ -68,9 +68,9 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
             setEmail("");
             setSubject("");
             setMessage("");
-          }, 1000);
-        }, 1000);
-      }, 1000);
+          }, 300);
+        }, 300);
+      }, 300);
 
     } catch (err) {
       console.error("Error creating inquiry:", err);

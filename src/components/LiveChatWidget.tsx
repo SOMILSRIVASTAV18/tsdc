@@ -240,9 +240,13 @@ export default function LiveChatWidget() {
                   </div>
 
                   {messages.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400 text-xs flex flex-col items-center justify-center gap-1.5">
-                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                      Connecting pipeline...
+                    <div className="text-center py-6 text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left space-y-1">
+                        <p className="font-bold text-slate-800">Welcome to TSDC Live Support!</p>
+                        <p className="text-[10px] text-slate-500 leading-normal">
+                          Our engineering support pipeline is fully operational. Type a message below to consult with our team instantly!
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     messages.map((msg) => {

@@ -89,9 +89,9 @@ export default function AdminView() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [careers, setCareers] = useState<Career[]>([]);
-  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [blogs, setBlogs] = useState<Blog[]>(DEFAULT_BLOGS);
+  const [careers, setCareers] = useState<Career[]>(DEFAULT_CAREERS);
+  const [faqs, setFaqs] = useState<FAQ[]>(DEFAULT_FAQS);
 
   // Selected chat session in real-time
   const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
@@ -146,12 +146,14 @@ export default function AdminView() {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const page = await getPageContent();
-      const inq = await getInquiries();
-      const apps = await getJobApplications();
-      const bgs = await getBlogs();
-      const crs = await getCareers();
-      const fqs = await getFAQs();
+      const [page, inq, apps, bgs, crs, fqs] = await Promise.all([
+        getPageContent(),
+        getInquiries(),
+        getJobApplications(),
+        getBlogs(),
+        getCareers(),
+        getFAQs()
+      ]);
 
       setPageContent(page);
       setInquiries(inq);

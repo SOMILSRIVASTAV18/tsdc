@@ -7,10 +7,11 @@ import {
 } from "lucide-react";
 import { FAQ } from "../types";
 import { getFAQs } from "../lib/db";
+import { DEFAULT_FAQS } from "../data/defaults";
 
 export default function FAQView() {
-  const [faqs, setFaqs] = useState<FAQ[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [faqs, setFaqs] = useState<FAQ[]>(DEFAULT_FAQS);
+  const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);

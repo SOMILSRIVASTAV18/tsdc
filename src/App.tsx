@@ -21,7 +21,7 @@ export default function App() {
   const [activeBlogSlug, setActiveBlogSlug] = useState<string | undefined>(undefined);
   const [prefilledContactData, setPrefilledContactData] = useState<any>(null);
   const [pageContent, setPageContent] = useState<PageContent>(DEFAULT_PAGE_CONTENT);
-  const [contentLoading, setContentLoading] = useState(true);
+  const [contentLoading, setContentLoading] = useState(false);
 
   // 1. Pathname-based Routing Hook
   useEffect(() => {
