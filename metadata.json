@@ -1,0 +1,6 @@
+{
+  "name": "App and Web Development Agency Portal",
+  "description": "Enterprise-grade website and client portal for an elite mobile and web development company, featuring service documentation, admin management panel, and client contact tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
