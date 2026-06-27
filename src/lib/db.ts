@@ -11,7 +11,8 @@ import {
   orderBy, 
   onSnapshot,
   FirestoreError,
-  increment
+  increment,
+  where
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Blog, Career, FAQ, PageContent, Inquiry, JobApplication, ChatMessage, ChatSession } from "../types";
@@ -217,12 +218,21 @@ export const submitInquiry = async (inquiry: Omit<Inquiry, "id" | "createdAt" | 
   return newInquiry;
 };
 
-export const getInquiries = async (): Promise<Inquiry[]> => {
+export const getInquiries = async (email?: string): Promise<Inquiry[]> => {
   try {
     const inquiriesCol = collection(db, "inquiries");
-    const q = query(inquiriesCol, orderBy("createdAt", "desc"));
+    let q;
+    if (email) {
+      q = query(inquiriesCol, where("email", "==", email));
+    } else {
+      q = query(inquiriesCol, orderBy("createdAt", "desc"));
+    }
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as Inquiry);
+    const results = querySnapshot.docs.map(doc => doc.data() as Inquiry);
+    if (email) {
+      results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return results;
   } catch (err) {
     return handleFirebaseError(err, []);
   }
@@ -247,12 +257,21 @@ export const submitJobApplication = async (application: Omit<JobApplication, "id
   return newApp;
 };
 
-export const getJobApplications = async (): Promise<JobApplication[]> => {
+export const getJobApplications = async (email?: string): Promise<JobApplication[]> => {
   try {
     const appsCol = collection(db, "applications");
-    const q = query(appsCol, orderBy("appliedAt", "desc"));
+    let q;
+    if (email) {
+      q = query(appsCol, where("email", "==", email));
+    } else {
+      q = query(appsCol, orderBy("appliedAt", "desc"));
+    }
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as JobApplication);
+    const results = querySnapshot.docs.map(doc => doc.data() as JobApplication);
+    if (email) {
+      results.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+    }
+    return results;
   } catch (err) {
     return handleFirebaseError(err, []);
   }
@@ -264,15 +283,23 @@ export const updateApplicationStatus = async (id: string, status: JobApplication
 };
 
 // --- REAL-TIME LIVE CHAT ---
-export const listenToSessions = (callback: (sessions: ChatSession[]) => void) => {
+export const listenToSessions = (callback: (sessions: ChatSession[]) => void, email?: string) => {
   const sessionsCol = collection(db, "chat_sessions");
-  const q = query(sessionsCol, orderBy("updatedAt", "desc"));
+  let q;
+  if (email) {
+    q = query(sessionsCol, where("clientEmail", "==", email));
+  } else {
+    q = query(sessionsCol, orderBy("updatedAt", "desc"));
+  }
   
   return onSnapshot(q, (snapshot) => {
     const sessions: ChatSession[] = [];
     snapshot.forEach((doc) => {
       sessions.push(doc.data() as ChatSession);
     });
+    if (email) {
+      sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
     callback(sessions);
   }, (err) => {
     console.error("Error listening to chat sessions:", err);

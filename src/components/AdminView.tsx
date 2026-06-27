@@ -63,6 +63,7 @@ import {
   saveFAQ, 
   deleteFAQ, 
   getInquiries, 
+  submitInquiry,
   updateInquiryStatus, 
   getJobApplications, 
   updateApplicationStatus, 
@@ -85,7 +86,7 @@ export default function AdminView() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
 
   // Master State Managers
-  const [activeTab, setActiveTab] = useState<"site" | "inquiries" | "chats" | "applications" | "blogs" | "careers" | "faqs">("site");
+  const [activeTab, setActiveTab] = useState<string>("site");
   const [loading, setLoading] = useState(false);
 
   // Content databases
@@ -112,6 +113,20 @@ export default function AdminView() {
   const [editingCareer, setEditingCareer] = useState<Career | null>(null);
   const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
 
+  const isAdmin = user?.email === "somilsrivastav18@gmail.com";
+
+  // Client portal specific states
+  const [clientInquiryName, setClientInquiryName] = useState("");
+  const [clientInquirySubject, setClientInquirySubject] = useState("");
+  const [clientInquiryMessage, setClientInquiryMessage] = useState("");
+  const [submittingInquiry, setSubmittingInquiry] = useState(false);
+  const [inquirySuccess, setInquirySuccess] = useState<string | null>(null);
+  
+  const [activeClientInquiry, setActiveClientInquiry] = useState<Inquiry | null>(null);
+  const [activeClientApplication, setActiveClientApplication] = useState<JobApplication | null>(null);
+  const [newClientChatText, setNewClientChatText] = useState("");
+  const [clientChatSending, setClientChatSending] = useState(false);
+
   // Monitor Authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -121,15 +136,28 @@ export default function AdminView() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch admin databases on login
+  // Set active tab based on role
+  useEffect(() => {
+    if (user) {
+      if (user.email === "somilsrivastav18@gmail.com") {
+        setActiveTab("site");
+      } else {
+        setActiveTab("client_inquiries");
+        setClientInquiryName(user.displayName || user.email?.split("@")[0] || "");
+      }
+    }
+  }, [user]);
+
+  // Fetch databases on login
   useEffect(() => {
     if (!user) return;
     loadAdminData();
 
     // Subscribe to chats sessions list in real-time
+    const emailFilter = user.email === "somilsrivastav18@gmail.com" ? undefined : user.email;
     const unsubscribeChats = listenToSessions((sessions) => {
       setChatSessions(sessions);
-    });
+    }, emailFilter);
 
     return () => {
       unsubscribeChats();
@@ -148,12 +176,16 @@ export default function AdminView() {
   }, [user, activeChatSessionId]);
 
   const loadAdminData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
+      const isUserAdmin = user.email === "somilsrivastav18@gmail.com";
+      const emailFilter = isUserAdmin ? undefined : user.email || undefined;
+
       const [page, inq, apps, bgs, crs, fqs] = await Promise.all([
         getPageContent(),
-        getInquiries(),
-        getJobApplications(),
+        getInquiries(emailFilter),
+        getJobApplications(emailFilter),
         getBlogs(),
         getCareers(),
         getFAQs()
@@ -166,7 +198,7 @@ export default function AdminView() {
       setCareers(crs);
       setFaqs(fqs);
     } catch (e) {
-      console.error("Error loading admin data:", e);
+      console.error("Error loading user/admin data:", e);
     } finally {
       setLoading(false);
     }
@@ -575,7 +607,7 @@ export default function AdminView() {
                 <img src="/TSDC.png" alt="TSDC" className="h-full w-full object-contain" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-white">TSDC Control Hub</h3>
+                <h3 className="font-bold text-sm text-white">{isAdmin ? "TSDC Control Hub" : "TSDC Client Portal"}</h3>
                 <p className="text-[10px] text-slate-500 truncate max-w-[150px]">{user.email}</p>
               </div>
             </div>
@@ -583,31 +615,74 @@ export default function AdminView() {
 
           {/* Nav Items list */}
           <nav className="space-y-1" id="admin-sidebar-nav">
-            {[
-              { id: "site", label: "Page Content (CMS)", icon: Layers },
-              { id: "inquiries", label: `User Inquiries (${inquiries.filter(i => i.status === "unread").length})`, icon: Inbox },
-              { id: "chats", label: `Live Chats (${chatSessions.filter(c => c.unreadCount > 0).length})`, icon: MessageSquare },
-              { id: "applications", label: `Job Applications (${applications.filter(a => a.status === "pending").length})`, icon: Users },
-              { id: "blogs", label: "Blogs Manager", icon: BookOpen },
-              { id: "careers", label: "Careers Manager", icon: Briefcase },
-              { id: "faqs", label: "FAQs Manager", icon: HelpCircle }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
-                    activeTab === tab.id 
-                      ? "bg-slate-900 text-cyan-400 border border-slate-800" 
-                      : "text-slate-400 hover:bg-slate-900/50 hover:text-white"
-                  }`}
-                >
-                  <Icon className="h-4.5 w-4.5 shrink-0" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+            {isAdmin ? (
+              [
+                { id: "site", label: "Page Content (CMS)", icon: Layers },
+                { id: "inquiries", label: `User Inquiries (${inquiries.filter(i => i.status === "unread").length})`, icon: Inbox },
+                { id: "chats", label: `Live Chats (${chatSessions.filter(c => c.unreadCount > 0).length})`, icon: MessageSquare },
+                { id: "applications", label: `Job Applications (${applications.filter(a => a.status === "pending").length})`, icon: Users },
+                { id: "blogs", label: "Blogs Manager", icon: BookOpen },
+                { id: "careers", label: "Careers Manager", icon: Briefcase },
+                { id: "faqs", label: "FAQs Manager", icon: HelpCircle }
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setActiveChatSessionId(null);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
+                      activeTab === tab.id 
+                        ? "bg-slate-900 text-cyan-400 border border-slate-800" 
+                        : "text-slate-400 hover:bg-slate-900/50 hover:text-white"
+                    }`}
+                  >
+                    <Icon className="h-4.5 w-4.5 shrink-0" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })
+            ) : (
+              [
+                { id: "client_inquiries", label: `My Inquiries (${inquiries.length})`, icon: Inbox },
+                { id: "client_chats", label: `Support Chat`, icon: MessageSquare },
+                { id: "client_applications", label: `My Applications (${applications.length})`, icon: Users },
+                { id: "client_new_inquiry", label: "Submit New Inquiry", icon: Plus }
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      if (tab.id === "client_chats") {
+                        const existingSession = chatSessions.find(s => s.clientEmail === user.email);
+                        if (existingSession) {
+                          setActiveChatSessionId(existingSession.id);
+                        } else {
+                          setActiveChatSessionId(null);
+                        }
+                      } else {
+                        setActiveChatSessionId(null);
+                      }
+                      setActiveClientInquiry(null);
+                      setActiveClientApplication(null);
+                      setInquirySuccess(null);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
+                      activeTab === tab.id 
+                        ? "bg-slate-900 text-cyan-400 border border-slate-800" 
+                        : "text-slate-400 hover:bg-slate-900/50 hover:text-white"
+                    }`}
+                  >
+                    <Icon className="h-4.5 w-4.5 shrink-0" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })
+            )}
           </nav>
 
         </div>
@@ -616,13 +691,15 @@ export default function AdminView() {
         <div className="space-y-4 pt-6 border-t border-slate-900">
           
           {/* DB Seed control */}
-          <button
-            onClick={handleResetDBDefaults}
-            className="w-full text-left px-3.5 py-2 rounded-lg text-[10px] text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 font-semibold flex items-center gap-2 cursor-pointer font-mono"
-          >
-            <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-            Reset to default DB Seed
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleResetDBDefaults}
+              className="w-full text-left px-3.5 py-2 rounded-lg text-[10px] text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 font-semibold flex items-center gap-2 cursor-pointer font-mono"
+            >
+              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+              Reset to default DB Seed
+            </button>
+          )}
 
           {/* User Signout */}
           <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-900/50 p-2.5 rounded-xl border border-slate-850">
@@ -1620,6 +1697,504 @@ export default function AdminView() {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* =========================================
+            CLIENT TAB 1: MY INQUIRIES
+            ========================================= */}
+        {activeTab === "client_inquiries" && (
+          <div className="space-y-6" id="client-inquiries-panel">
+            <div className="border-b border-slate-850 pb-4">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Inbox className="h-6 w-6 text-cyan-400" />
+                My Inquiries & Support Tickets
+              </h1>
+              <p className="text-xs text-slate-400">Track inquiries you have sent to TSDC Engineers and view response statuses.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Inquiry list */}
+              <div className="lg:col-span-1 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Submission Logs ({inquiries.length})</h3>
+                {inquiries.length === 0 ? (
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 text-center">
+                    <p className="text-xs text-slate-500">No active inquiries filed under your email.</p>
+                    <button onClick={() => setActiveTab("client_new_inquiry")} className="mt-3 text-xs text-cyan-400 hover:underline font-semibold flex items-center gap-1 justify-center mx-auto">
+                      Submit an Inquiry now <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                    {inquiries.map((inq) => {
+                      const isSelected = activeClientInquiry?.id === inq.id;
+                      return (
+                        <button
+                          key={inq.id}
+                          onClick={() => setActiveClientInquiry(inq)}
+                          className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                            isSelected 
+                              ? "bg-slate-800 border-cyan-500/55 shadow-lg" 
+                              : "bg-slate-950 border-slate-850 hover:border-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[10px] font-mono text-slate-500">{new Date(inq.createdAt).toLocaleDateString()}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              inq.status === "unread" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+                              inq.status === "replied" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" :
+                              "bg-slate-800 text-slate-400 border border-slate-700"
+                            }`}>
+                              {inq.status}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white truncate">{inq.subject}</h4>
+                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{inq.message}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Inquiry detail panel */}
+              <div className="lg:col-span-2">
+                {activeClientInquiry ? (
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div className="border-b border-slate-850 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                      <div>
+                        <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">Ticket Details</span>
+                        <h2 className="text-lg font-bold text-white mt-1">{activeClientInquiry.subject}</h2>
+                        <p className="text-xs text-slate-500">Submitted on {new Date(activeClientInquiry.createdAt).toLocaleString()} by {activeClientInquiry.name}</p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase self-start sm:self-center ${
+                        activeClientInquiry.status === "unread" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+                        activeClientInquiry.status === "replied" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" :
+                        "bg-slate-800 text-slate-400 border border-slate-700"
+                      }`}>
+                        {activeClientInquiry.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Original Client Message */}
+                      <div className="space-y-1 bg-slate-900 border border-slate-850 p-4 rounded-xl">
+                        <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Original Inquiry Message:</span>
+                        <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{activeClientInquiry.message}</p>
+                      </div>
+
+                      {/* Response block */}
+                      {activeClientInquiry.responseSent ? (
+                        <div className="space-y-2.5 bg-cyan-950/20 border border-cyan-800/40 p-5 rounded-xl">
+                          <div className="flex items-center gap-2 text-cyan-400">
+                            <Sparkles className="h-4 w-4 animate-pulse" />
+                            <span className="text-[10px] uppercase font-bold tracking-wider font-mono">Official Response from TSDC Engineers</span>
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">{activeClientInquiry.responseSent}</p>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-900/50 border border-slate-850/50 p-4 rounded-xl text-center">
+                          <p className="text-xs text-slate-500">Our engineering pipeline is checking your specifications. We will send a secured reply to your terminal shortly.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-12 text-center h-full flex flex-col items-center justify-center">
+                    <Inbox className="h-12 w-12 text-slate-700 mb-3" />
+                    <h3 className="font-bold text-sm text-slate-400">Select an inquiry ticket</h3>
+                    <p className="text-xs text-slate-500 max-w-xs mt-1">Select any submitted ticket from the sidebar ledger to review response logs and feedback directly.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================
+            CLIENT TAB 2: SUPPORT CHAT
+            ========================================= */}
+        {activeTab === "client_chats" && (
+          <div className="space-y-6" id="client-chats-panel">
+            <div className="border-b border-slate-850 pb-4">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <MessageSquare className="h-6 w-6 text-cyan-400" />
+                Live Chat Support
+              </h1>
+              <p className="text-xs text-slate-400">Converse directly with TSDC Engineers in a real-time Firestore session.</p>
+            </div>
+
+            {activeChatSessionId ? (
+              <div className="grid grid-cols-1 max-w-4xl bg-slate-950 border border-slate-850 rounded-3xl overflow-hidden shadow-2xl h-[550px] flex flex-col">
+                {/* Header info */}
+                <div className="bg-slate-900 px-6 py-4 border-b border-slate-850 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Circle className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400 animate-pulse" />
+                    <div>
+                      <h3 className="font-bold text-sm text-white">TSDC Support Bridge</h3>
+                      <p className="text-[10px] text-slate-500 font-mono">Session ID: {activeChatSessionId}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages list */}
+                <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-950 flex flex-col">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center my-auto space-y-2">
+                      <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin mx-auto" />
+                      <p className="text-xs text-slate-500 font-mono">Establishing secure handshake to chat nodes...</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMe = msg.sender === "client";
+                      return (
+                        <div key={msg.id} className={`flex flex-col max-w-[75%] ${isMe ? "ml-auto items-end" : "mr-auto items-start"}`}>
+                          <span className="text-[9px] text-slate-500 font-mono mb-1">{isMe ? "You" : "TSDC Engineer"}</span>
+                          <div className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                            isMe 
+                              ? "bg-cyan-500 text-slate-950 font-semibold rounded-tr-none" 
+                              : "bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none"
+                          }`}>
+                            {msg.text}
+                          </div>
+                          <span className="text-[8px] text-slate-600 font-mono mt-1">{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Sender controls */}
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!newClientChatText.trim() || clientChatSending) return;
+                    setClientChatSending(true);
+                    const text = newClientChatText;
+                    setNewClientChatText("");
+                    try {
+                      await sendChatMessage(
+                        activeChatSessionId,
+                        user.displayName || user.email?.split("@")[0] || "Client",
+                        user.email || undefined,
+                        "client",
+                        text
+                      );
+                    } catch (err) {
+                      console.error("Client send message failed:", err);
+                    } finally {
+                      setClientChatSending(false);
+                    }
+                  }} 
+                  className="bg-slate-900 p-4 border-t border-slate-850 flex gap-2"
+                >
+                  <input
+                    type="text"
+                    required
+                    placeholder="Type your message to TSDC support..."
+                    value={newClientChatText}
+                    onChange={(e) => setNewClientChatText(e.target.value)}
+                    className="flex-1 bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newClientChatText.trim() || clientChatSending}
+                    className="px-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold rounded-xl text-xs uppercase flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-slate-950 border border-slate-850 rounded-2xl p-12 text-center max-w-xl shadow-xl flex flex-col items-center justify-center">
+                <MessageSquare className="h-12 w-12 text-slate-700 mb-4" />
+                <h3 className="font-bold text-base text-white">No active live chat session</h3>
+                <p className="text-xs text-slate-400 mt-2 mb-6 max-w-sm leading-relaxed">
+                  Open a secure, instant, real-time message tunnel directly with our engineers to ask technical inquiries or project consulting quotes.
+                </p>
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    const sessId = `chat-${Date.now()}`;
+                    try {
+                      await sendChatMessage(
+                        sessId,
+                        user.displayName || user.email?.split("@")[0] || "Client",
+                        user.email || undefined,
+                        "client",
+                        "Hello! I am logged into the portal and would like to start a real-time consulting session."
+                      );
+                      setActiveChatSessionId(sessId);
+                    } catch (err) {
+                      console.error("Failed to start client chat session:", err);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-lg"
+                >
+                  <Sparkles className="h-4 w-4" /> Start Live Chat Bridge
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* =========================================
+            CLIENT TAB 3: MY APPLICATIONS
+            ========================================= */}
+        {activeTab === "client_applications" && (
+          <div className="space-y-6" id="client-applications-panel">
+            <div className="border-b border-slate-850 pb-4">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Users className="h-6 w-6 text-cyan-400" />
+                My Job Applications
+              </h1>
+              <p className="text-xs text-slate-400">Review status logs of job applications you have submitted for active TSDC positions.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Applications list */}
+              <div className="lg:col-span-1 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Applications Ledger ({applications.length})</h3>
+                {applications.length === 0 ? (
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 text-center">
+                    <p className="text-xs text-slate-500">No job applications submitted under your email.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                    {applications.map((app) => {
+                      const isSelected = activeClientApplication?.id === app.id;
+                      return (
+                        <button
+                          key={app.id}
+                          onClick={() => setActiveClientApplication(app)}
+                          className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                            isSelected 
+                              ? "bg-slate-800 border-cyan-500/55 shadow-lg" 
+                              : "bg-slate-950 border-slate-850 hover:border-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[10px] font-mono text-slate-500">{new Date(app.appliedAt).toLocaleDateString()}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              app.status === "pending" ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" :
+                              app.status === "shortlisted" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" :
+                              app.status === "rejected" ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" :
+                              "bg-slate-800 text-slate-400 border border-slate-700"
+                            }`}>
+                              {app.status}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white truncate">{app.jobTitle}</h4>
+                          <p className="text-[11px] text-slate-500 font-mono truncate">{app.name}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Detail panel */}
+              <div className="lg:col-span-2">
+                {activeClientApplication ? (
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div className="border-b border-slate-850 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                      <div>
+                        <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">Application Overview</span>
+                        <h2 className="text-lg font-bold text-white mt-1">{activeClientApplication.jobTitle}</h2>
+                        <p className="text-xs text-slate-500">Submitted on {new Date(activeClientApplication.appliedAt).toLocaleString()}</p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase self-start sm:self-center ${
+                        activeClientApplication.status === "pending" ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" :
+                        activeClientApplication.status === "shortlisted" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" :
+                        activeClientApplication.status === "rejected" ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" :
+                        "bg-slate-800 text-slate-400 border border-slate-700"
+                      }`}>
+                        {activeClientApplication.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4 bg-slate-900/50 p-4 border border-slate-850 rounded-xl">
+                        <div>
+                          <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Applicant Name:</span>
+                          <p className="text-xs text-slate-300 font-semibold">{activeClientApplication.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Applicant Email:</span>
+                          <p className="text-xs text-slate-300 font-mono">{activeClientApplication.email}</p>
+                        </div>
+                        {activeClientApplication.portfolioUrl && (
+                          <div>
+                            <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Portfolio Site:</span>
+                            <a href={activeClientApplication.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-400 hover:underline flex items-center gap-1 mt-0.5">
+                              Open Portfolio <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
+                        {activeClientApplication.githubUrl && (
+                          <div>
+                            <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">GitHub Profile:</span>
+                            <a href={activeClientApplication.githubUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-400 hover:underline flex items-center gap-1 mt-0.5">
+                              Open GitHub <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1 bg-slate-900 border border-slate-850 p-4 rounded-xl">
+                        <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Attached Cover Letter / Resume Details:</span>
+                        <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{activeClientApplication.resumeText}</p>
+                      </div>
+
+                      <div className="bg-slate-900/40 border border-slate-850/60 p-4 rounded-xl">
+                        <h4 className="text-xs font-bold text-white mb-1.5 flex items-center gap-1">
+                          <CheckCircle2 className="h-4 w-4 text-cyan-400" />
+                          Evaluation Process Notice
+                        </h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Your credentials are authenticated directly under our recruitment cloud. Our talent acquisition pipeline will notify you on your registered email address if you are shortlisted for further technical rounds.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-12 text-center h-full flex flex-col items-center justify-center">
+                    <Users className="h-12 w-12 text-slate-700 mb-3" />
+                    <h3 className="font-bold text-sm text-slate-400">Select an application file</h3>
+                    <p className="text-xs text-slate-500 max-w-xs mt-1">Select any submitted application ledger from the sidebar to review recruiter review stages.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================
+            CLIENT TAB 4: SUBMIT NEW INQUIRY
+            ========================================= */}
+        {activeTab === "client_new_inquiry" && (
+          <div className="space-y-6 max-w-3xl" id="client-new-inquiry-panel">
+            <div className="border-b border-slate-850 pb-4">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Plus className="h-6 w-6 text-cyan-400" />
+                Submit New Inquiry Ticket
+              </h1>
+              <p className="text-xs text-slate-400">Describe your custom specifications, and TSDC Engineers will review them and reply directly inside this portal.</p>
+            </div>
+
+            {inquirySuccess ? (
+              <div className="bg-emerald-950/20 border border-emerald-900 p-6 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="h-6 w-6" />
+                  <h3 className="font-bold text-base">Inquiry Successfully Filed!</h3>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Your inquiry has been successfully dispatched to TSDC Engineers under your registered account <strong>{user.email}</strong>. 
+                  You can track its status, response logs, and direct replies inside the <strong>My Inquiries</strong> ledger.
+                </p>
+                <button
+                  onClick={() => {
+                    setInquirySuccess(null);
+                    setActiveTab("client_inquiries");
+                  }}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs"
+                >
+                  View Inquiries List
+                </button>
+              </div>
+            ) : (
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!clientInquirySubject.trim() || !clientInquiryMessage.trim() || submittingInquiry) return;
+                  setSubmittingInquiry(true);
+                  try {
+                    await submitInquiry({
+                      name: clientInquiryName.trim() || user.displayName || user.email?.split("@")[0] || "Client",
+                      email: user.email || "",
+                      subject: clientInquirySubject.trim(),
+                      message: clientInquiryMessage.trim()
+                    });
+                    setInquirySuccess("Ticket filed successfully");
+                    setClientInquirySubject("");
+                    setClientInquiryMessage("");
+                    loadAdminData();
+                  } catch (err) {
+                    console.error("Failed to file inquiry ticket:", err);
+                  } finally {
+                    setSubmittingInquiry(false);
+                  }
+                }}
+                className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-5"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Your Display Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={clientInquiryName}
+                      onChange={(e) => setClientInquiryName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg p-2.5 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Registered Email Address</label>
+                    <input
+                      type="email"
+                      disabled
+                      value={user.email || ""}
+                      className="w-full bg-slate-900 border border-slate-850 text-xs text-slate-500 rounded-lg p-2.5 font-mono cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Inquiry Subject / Topic</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Enterprise Web Application Quote"
+                    value={clientInquirySubject}
+                    onChange={(e) => setClientInquirySubject(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg p-2.5 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Detailed Message / Specifications</label>
+                  <textarea
+                    required
+                    rows={6}
+                    placeholder="Describe your design parameters, target platform requirements, and estimated timelines..."
+                    value={clientInquiryMessage}
+                    onChange={(e) => setClientInquiryMessage(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-lg p-2.5 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-900 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={submittingInquiry}
+                    className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-black rounded-xl text-xs uppercase flex items-center gap-1.5 cursor-pointer shadow-lg"
+                  >
+                    {submittingInquiry ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" /> Dispatched Ticket...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" /> Dispatch Support Ticket
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 
