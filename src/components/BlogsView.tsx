@@ -53,7 +53,26 @@ export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps
     loadBlogs();
   }, []);
 
-  const categories = ["All", "Cloud Engineering", "Mobile Systems", "Enterprise Security"];
+  const categories = ["All", ...Array.from(new Set(blogs.map(blog => blog.category).filter(Boolean)))];
+
+  const getAuthorInitials = (name: string) => {
+    if (!name) return "CO";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getAuthorBio = (authorName: string, authorRole?: string) => {
+    if (authorName === "Somil Srivastava") {
+      return "Co-Founder and Core System Engineer. Specializes in multi-tab database synchronizations, Express backend optimizations, and React web platforms.";
+    }
+    if (authorName === "Vaibhavi Keshari") {
+      return "Co-Founder and Mobile Architect. Deep expert in Jetpack Compose, Kotlin system optimizations, local Room databases, and Google Play Store listing submissions.";
+    }
+    return `${authorRole || "Contributing Tech Author"}. Writes deep insights, clean engineering tutorials, and system architectural specifications.`;
+  };
 
   const filteredBlogs = blogs.filter(blog => {
     if (selectedCategory === "All") return true;
@@ -166,15 +185,12 @@ export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps
             {/* Footer Author Bio */}
             <div className="border border-slate-200 bg-white p-6 rounded-2xl flex items-center gap-4 mt-12 shadow-xs">
               <div className="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">
-                {activeBlog.author === "Somil Srivastav" ? "SS" : "VK"}
+                {getAuthorInitials(activeBlog.author)}
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900">{activeBlog.author}</h4>
                 <p className="text-xs text-slate-500">
-                  {activeBlog.author === "Somil Srivastav" 
-                    ? "Co-Founder and Core System Engineer. Specializes in multi-tab database synchronizations, Express backend optimizations, and React web platforms."
-                    : "Co-Founder and Mobile Architect. Deep expert in Jetpack Compose, Kotlin system optimizations, local Room databases, and Google Play Store listing submissions."
-                  }
+                  {getAuthorBio(activeBlog.author, activeBlog.authorRole)}
                 </p>
               </div>
             </div>
@@ -266,7 +282,7 @@ export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps
 
                       <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-500 font-mono">
-                          by {blog.author.split(" ")[0]}
+                          by {blog.author}
                         </span>
                         
                         <button

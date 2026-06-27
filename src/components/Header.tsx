@@ -71,7 +71,7 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
               }`}
               id="nav-admin-btn"
             >
-              Client & Admin Portal
+              Login
             </button>
           </nav>
 
@@ -112,7 +112,7 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
                 : "bg-slate-100 text-slate-700 border-slate-200"
             }`}
           >
-            Client & Admin Portal
+            Login
           </button>
         </div>
       )}

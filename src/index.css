@@ -30,3 +30,282 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #334155; /* slate-700 */
 }
+
+/* ==========================================================================
+   TSDC ADMIN & CLIENT PORTAL LIGHT THEME OVERRIDES
+   ========================================================================== */
+
+#admin-login-screen,
+#admin-authenticated-dashboard,
+.admin-portal-loading {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+#admin-login-screen *,
+#admin-authenticated-dashboard *,
+.admin-portal-loading * {
+  border-color: #e2e8f0;
+}
+
+/* Auth / Loading screen overrides */
+.admin-portal-loading {
+  background-color: #f8fafc !important;
+}
+.admin-portal-loading p {
+  color: #475569 !important;
+}
+
+/* Card Overrides */
+#admin-login-screen .bg-slate-950,
+#admin-authenticated-dashboard .bg-slate-950,
+#admin-authenticated-dashboard .bg-slate-900,
+#admin-authenticated-dashboard .bg-slate-900\/50,
+#admin-authenticated-dashboard .bg-slate-950\/50,
+#admin-authenticated-dashboard .bg-slate-900\/40,
+#admin-authenticated-dashboard .bg-slate-800 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Sidebar Overrides */
+#admin-sidebar {
+  background-color: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+#admin-sidebar h3 {
+  color: #0f172a !important;
+}
+#admin-sidebar p {
+  color: #64748b !important;
+}
+
+/* Sidebar Navigation Items */
+#admin-sidebar-nav button {
+  color: #475569 !important;
+}
+#admin-sidebar-nav button:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+#admin-sidebar-nav button.text-cyan-400,
+#admin-sidebar-nav button.bg-slate-900 {
+  background-color: #f1f5f9 !important;
+  color: #0284c7 !important; /* sky-600 */
+  border-color: #cbd5e1 !important;
+}
+
+/* Sign out / active status section in sidebar */
+#admin-sidebar .bg-slate-900\/50 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+#admin-sidebar .text-slate-300 {
+  color: #334155 !important;
+}
+#admin-sidebar .text-rose-400 {
+  color: #dc2626 !important;
+}
+#admin-sidebar .text-rose-400:hover {
+  color: #991b1b !important;
+}
+
+/* DB Reset Button */
+#admin-sidebar .text-amber-500 {
+  color: #d97706 !important;
+}
+#admin-sidebar .text-amber-500:hover {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+/* Main Console Container */
+#admin-main-console {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Syncing/Loading Alert bar */
+#admin-main-console .bg-slate-950\/40 {
+  background-color: #ecfeff !important;
+  border: 1px solid #c5f6fa !important;
+  color: #0891b2 !important;
+}
+
+/* Headers & Typography */
+#admin-authenticated-dashboard h1,
+#admin-authenticated-dashboard h2,
+#admin-authenticated-dashboard h3,
+#admin-authenticated-dashboard h4,
+#admin-authenticated-dashboard th {
+  color: #0f172a !important;
+}
+
+#admin-authenticated-dashboard p,
+#admin-authenticated-dashboard span,
+#admin-authenticated-dashboard td,
+#admin-authenticated-dashboard label {
+  color: #334155 !important;
+}
+
+/* Accent Colors and cyan replacements */
+#admin-authenticated-dashboard .text-cyan-400 {
+  color: #0284c7 !important; /* sky-600 */
+}
+#admin-authenticated-dashboard .text-cyan-500 {
+  color: #0369a1 !important; /* sky-700 */
+}
+
+/* Specific text color fixes for status tags */
+#admin-authenticated-dashboard .text-slate-400,
+#admin-authenticated-dashboard .text-slate-500,
+#admin-authenticated-dashboard .text-slate-600 {
+  color: #475569 !important;
+}
+
+/* Forms, Inputs, Textareas, Selects */
+#admin-authenticated-dashboard input,
+#admin-authenticated-dashboard textarea,
+#admin-authenticated-dashboard select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+#admin-authenticated-dashboard input:focus,
+#admin-authenticated-dashboard textarea:focus,
+#admin-authenticated-dashboard select:focus {
+  border-color: #0284c7 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2) !important;
+}
+#admin-authenticated-dashboard input:disabled,
+#admin-authenticated-dashboard textarea:disabled,
+#admin-authenticated-dashboard select:disabled {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+}
+
+/* Table styling overrides */
+#admin-authenticated-dashboard table {
+  border-color: #e2e8f0 !important;
+}
+#admin-authenticated-dashboard tr {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+#admin-authenticated-dashboard tr:hover {
+  background-color: #f8fafc !important;
+}
+#admin-authenticated-dashboard th {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+/* Card borders and boxes */
+#admin-authenticated-dashboard .border-slate-800,
+#admin-authenticated-dashboard .border-slate-850,
+#admin-authenticated-dashboard .border-slate-900 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Form block headers and sections */
+#admin-authenticated-dashboard .border-b.border-slate-900,
+#admin-authenticated-dashboard .border-t.border-slate-900,
+#admin-authenticated-dashboard .border-b.border-slate-850,
+#admin-authenticated-dashboard .border-t.border-slate-850 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Specific sub-sections */
+#admin-authenticated-dashboard .bg-cyan-950\/20 {
+  background-color: #f0f9ff !important;
+  border-color: #bae6fd !important;
+}
+#admin-authenticated-dashboard .bg-cyan-950\/20 .text-slate-200 {
+  color: #0369a1 !important;
+}
+
+#admin-authenticated-dashboard .bg-rose-950\/40 {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+#admin-authenticated-dashboard .bg-rose-950\/40 p,
+#admin-authenticated-dashboard .bg-rose-950\/40 span {
+  color: #991b1b !important;
+}
+
+#admin-authenticated-dashboard .bg-emerald-950\/20 {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+/* Active lists/tabs items */
+#admin-authenticated-dashboard button.border-cyan-500\/55 {
+  border-color: #0284c7 !important;
+  background-color: #f0f9ff !important;
+}
+
+/* Live chat container fixes */
+#admin-authenticated-dashboard .bg-slate-950 {
+  border-color: #cbd5e1 !important;
+}
+#admin-authenticated-dashboard .bg-slate-950 .bg-slate-900 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+#admin-authenticated-dashboard .bg-slate-950 .bg-slate-950 {
+  background-color: #ffffff !important;
+}
+
+/* Chat bubble styling */
+#admin-authenticated-dashboard .rounded-tl-none.bg-slate-900 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+#admin-authenticated-dashboard .rounded-tr-none.bg-cyan-500 {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+/* Job application detailed list */
+#admin-authenticated-dashboard .bg-slate-900\/50 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Login page details */
+#admin-login-screen button:not(.bg-gradient-to-r) {
+  color: #475569 !important;
+}
+#admin-login-screen button:not(.bg-gradient-to-r):hover {
+  color: #0f172a !important;
+}
+#admin-login-screen .bg-slate-900 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+#admin-login-screen .text-slate-400 {
+  color: #475569 !important;
+}
+#admin-login-screen .text-slate-600 {
+  color: #64748b !important;
+}
+#admin-login-screen .border-slate-850 {
+  border-color: #cbd5e1 !important;
+}
+#admin-login-screen input {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+#admin-login-screen button.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+#admin-login-screen button.bg-slate-900:hover {
+  background-color: #f8fafc !important;
+}
+

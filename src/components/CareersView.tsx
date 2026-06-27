@@ -98,7 +98,7 @@ export default function CareersView() {
             Build Future-Proof Architectures
           </h1>
           <p className="text-slate-600">
-            Work directly with Somil and Vaibhav to engineer secure, distributed mobile applications and client portals. We offer professional autonomy, transparent compensation, and high-impact project exposure.
+            Work directly with our founding engineers to engineer secure, distributed mobile applications and client portals. We offer professional autonomy, transparent compensation, and high-impact project exposure.
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export default function CareersView() {
                     </div>
                     <h4 className="text-2xl font-bold text-slate-900">Application Received!</h4>
                     <p className="text-slate-600 text-sm max-w-md mx-auto">
-                      Your engineering resume profile has been safely saved to THE SOFTWARE DEVELOPMENT COMPANY's Firestore. An automated notification email has been dispatched to Somil & Vaibhav.
+                      Your engineering resume profile has been safely saved to THE SOFTWARE DEVELOPMENT COMPANY's secure database. An automated notification email has been dispatched to our hiring team.
                     </p>
                     <button
                       onClick={() => setActiveJobForModal(null)}

@@ -23,10 +23,10 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
       subtitle: "High-Performance Mobile Systems",
       desc: "We construct robust native Android applications using Kotlin and Jetpack Compose. Specialized in low-resource memory optimizations, local room cache storage, and seamless publishing transitions for the Google Play Store.",
       deliverables: [
-        "Play Store listing compliance & automated publishing pipeline",
-        "Low-latency Room SQL offline caching systems",
-        "Material Design 3 clean layout interfaces",
-        "FCM push notifications and live telemetries"
+        "Google Play Store publishing and listings setup",
+        "Fast offline database storage (app works without internet)",
+        "Modern, clean, and beautiful user interfaces",
+        "Instant push notifications and real-time updates"
       ],
       color: "from-emerald-500 to-teal-400"
     },
@@ -37,10 +37,10 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
       subtitle: "SEO-Optimized Enterprise-Grade Apps",
       desc: "Our web apps are engineered using React with Vite for fast load times and clean Tailwind CSS structures. We design responsive structures that achieve high indexability and fluid transition aesthetics.",
       deliverables: [
-        "Next-generation responsive bento layouts",
-        "Custom serverless edge worker caching structures",
-        "Tailwind performance compilation",
-        "SEO metadata optimization tags"
+        "Beautiful bento-style layouts that look great on any screen size",
+        "Super fast cloud servers so your website loads instantly",
+        "Highly optimized code for maximum loading speed",
+        "Search engine optimization (SEO) so Google finds you easily"
       ],
       color: "from-blue-600 to-cyan-500"
     },
@@ -51,10 +51,10 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
       subtitle: "Zero-Trust Secure Management Hubs",
       desc: "Secure portals for internal teams and external customers. Similar to the Northern Railways training model, we implement role-based access levels, real-time inquiry logging, and automated notification services.",
       deliverables: [
-        "Symmetric role-based permissions (RBAC)",
-        "Real-time event logs and support pipelines",
-        "Automated confirmation email workflows",
-        "Dynamic content controllers without modifying source code"
+        "Secure user logins (such as admin vs. client roles)",
+        "Real-time logs and live support helpdesks",
+        "Automatic email notifications and alerts",
+        "Manage content (blogs, jobs, text) easily without any coding"
       ],
       color: "from-violet-600 to-purple-500"
     },
@@ -65,10 +65,10 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
       subtitle: "Fail-Safe NoSQL Data Architectures",
       desc: "We integrate enterprise cloud databases like Firestore and Cloud SQL. We enable multi-tab browser caches, real-time message sync, and secure tokenized authentication.",
       deliverables: [
-        "Offline-first client-side data synchronization",
-        "Sub-100ms multi-user message hubs",
-        "Secure Firebase Auth with Google Sign-In support",
-        "Cryptographically locked backend routers"
+        "Auto-syncing databases (saves offline and uploads when online)",
+        "Super fast real-time live chat systems",
+        "Secure Google Login and email login options",
+        "Fully encrypted database protection and security locks"
       ],
       color: "from-amber-500 to-orange-400"
     }

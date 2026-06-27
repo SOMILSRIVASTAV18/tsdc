@@ -6,7 +6,7 @@ export const DEFAULT_PAGE_CONTENT: PageContent = {
   heroSubtitle: "Enterprise-grade cross-platform architectures, secure cloud backends, and bespoke digital portals designed for industry leaders and fast-growing enterprises.",
   heroCTA: "Consult Our Engineers",
   aboutTitle: "Elite Tech Engineering Firm",
-  aboutContent: "We specialize in building cutting-edge Android applications and highly scalable React web applications. Utilizing modern cloud architectures, secure backend integrations, and meticulous UI/UX principles, we help leading businesses automate workflows and deliver pristine user experiences. Our team is driven by two senior software engineers, Somil Srivastav and Vaibhav Keshari, bringing enterprise-grade craftsmanship to every project.",
+  aboutContent: "We specialize in building cutting-edge Android applications and highly scalable React web applications. Utilizing modern cloud architectures, secure backend integrations, and meticulous UI/UX principles, we help leading businesses automate workflows and deliver pristine user experiences. Our team is driven by two senior software engineers, Somil Srivastava and Vaibhavi Keshari, bringing enterprise-grade craftsmanship to every project.",
   aboutStats: [
     { label: "Active Deployments", value: "24+" },
     { label: "Android Apps Active", value: "10+" },
@@ -46,7 +46,7 @@ We leveraged Cloudflare Workers to handle light-weight, high-speed API routing t
 
 This combination guarantees an enterprise-grade experience where data remains integrated and secure, even in volatile network environments.
     `,
-    author: "Somil Srivastav",
+    author: "Somil Srivastava",
     authorRole: "Principal Web Architect",
     category: "Cloud Engineering",
     readTime: "5 min read",
@@ -75,7 +75,7 @@ To achieve the fluid, fluid responsiveness expected of modern industrial applica
 #### Play Store Success
 By restructuring the package architecture, the **AK Industries Android application** reached lightning-fast cold-start times, significantly boosting retention and rating performance on the Google Play Store.
     `,
-    author: "Vaibhav Keshari",
+    author: "Vaibhavi Keshari",
     authorRole: "Lead Android Engineer",
     category: "Mobile Systems",
     readTime: "7 min read",
@@ -103,7 +103,7 @@ Our work on the **Northern Railways Training Portal** serves as an industry stan
 
 By implementing React components and utilizing tailwind styling, we engineered a fast, compliant, and universally accessible solution.
     `,
-    author: "Somil Srivastav",
+    author: "Somil Srivastava",
     authorRole: "Principal Architect",
     category: "Enterprise Security",
     readTime: "6 min read",
@@ -122,7 +122,7 @@ export const DEFAULT_CAREERS: Career[] = [
     type: "Full-Time",
     experience: "4+ Years",
     salary: "₹12L - ₹18L / annum",
-    description: "We are looking for a Senior React Engineer who is passionate about creating high-performance, responsive single-page applications. You will collaborate closely with Somil Srivastav and Vaibhav Keshari to engineer client portals, real-time dashboards, and secure backend integrations.",
+    description: "We are looking for a Senior React Engineer who is passionate about creating high-performance, responsive single-page applications. You will collaborate closely with our core technology team to engineer client portals, real-time dashboards, and secure backend integrations.",
     requirements: [
       "Extensive experience with React 18/19, TypeScript, and modern bundlers (Vite/Webpack).",
       "Proficiency in responsive interface design using Tailwind CSS.",
@@ -254,14 +254,14 @@ export const CLIENT_PORTFOLIOS = [
 
 export const CORE_TEAM = [
   {
-    name: "Somil Srivastav",
+    name: "Somil Srivastava",
     role: "Co-Founder & Principal Web Architect",
     portfolioUrl: "https://somilsrivastav.netlify.app/",
     avatar: "SS",
     bio: "Passionate about high-throughput web systems, custom API design, and pristine responsive dashboards in React and Cloud Native ecosystems."
   },
   {
-    name: "Vaibhav Keshari",
+    name: "Vaibhavi Keshari",
     role: "Co-Founder & Lead Android Architect",
     portfolioUrl: "https://vaibhavikeshari.netlify.app/",
     avatar: "VK",

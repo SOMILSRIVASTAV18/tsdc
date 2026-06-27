@@ -80,7 +80,7 @@ export default function AdminView() {
   
   // Real Firebase Email & Password authentication states
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("somilsrivastav18@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -110,6 +110,8 @@ export default function AdminView() {
 
   // Editors Modals & Creators State
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
+  const [customCategoryMode, setCustomCategoryMode] = useState(false);
+  const [customAuthorMode, setCustomAuthorMode] = useState(false);
   const [editingCareer, setEditingCareer] = useState<Career | null>(null);
   const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
 
@@ -227,13 +229,16 @@ export default function AdminView() {
       if (authMode === "login") {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       } else {
+        if (email.trim().toLowerCase() === "somilsrivastav18@gmail.com") {
+          throw new Error("Registration is disabled for the Administrator account. Please sign in instead.");
+        }
         await createUserWithEmailAndPassword(auth, email.trim(), password);
       }
     } catch (err: any) {
       console.error("Firebase authentication error:", err);
       let errorMsg = "Authentication failed. Please verify your details.";
       if (err?.code === "auth/user-not-found" || err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
-        errorMsg = "Incorrect email or password. If you don't have an account, switch to 'Create Admin Account' mode to register.";
+        errorMsg = "Incorrect email or password. If you don't have an account, switch to 'Create Account' mode to register.";
       } else if (err?.code === "auth/email-already-in-use") {
         errorMsg = "This email is already in use. Please sign in instead.";
       } else if (err?.code === "auth/weak-password") {
@@ -259,6 +264,10 @@ export default function AdminView() {
   // Operations: Page Content update
   const handleSavePageContent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized access. Only administrator somilsrivastav18@gmail.com is permitted to save configurations.");
+      return;
+    }
     try {
       await updatePageContent(pageContent);
       alert("Page Content successfully updated in Cloud Firestore database!");
@@ -270,6 +279,10 @@ export default function AdminView() {
 
   // Operations: Inquiry actions
   const handleUpdateInquiry = async (id: string, status: Inquiry["status"]) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can update inquiries.");
+      return;
+    }
     try {
       await updateInquiryStatus(id, { status });
       setInquiries(inquiries.map(i => i.id === id ? { ...i, status } : i));
@@ -280,6 +293,10 @@ export default function AdminView() {
 
   const handleInquiryReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can reply to inquiries.");
+      return;
+    }
     if (!replyingInquiry || !replyMessageText.trim()) return;
 
     setReplySubmitting(true);
@@ -317,6 +334,10 @@ export default function AdminView() {
   // Operations: Chat actions
   const handleSendAdminChat = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can send messages through the Admin Chat console.");
+      return;
+    }
     if (!activeChatSessionId || !newAdminChatText.trim()) return;
 
     const textToSend = newAdminChatText;
@@ -342,6 +363,10 @@ export default function AdminView() {
 
   // Operations: Application actions
   const handleUpdateApplication = async (id: string, status: JobApplication["status"]) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can update job application status.");
+      return;
+    }
     try {
       await updateApplicationStatus(id, status);
       setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
@@ -352,6 +377,10 @@ export default function AdminView() {
 
   // Operations: Reset DB defaults
   const handleResetDBDefaults = async () => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can reset database configurations.");
+      return;
+    }
     if (!confirm("Are you sure you want to reset all site pages, blogs, FAQs, and careers to default configurations? This will overwrite manual changes.")) return;
     
     setLoading(true);
@@ -384,6 +413,10 @@ export default function AdminView() {
   // Blogs CRUD
   const handleSaveBlog = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can save blog posts.");
+      return;
+    }
     if (!editingBlog) return;
 
     try {
@@ -397,6 +430,10 @@ export default function AdminView() {
   };
 
   const handleDeleteBlog = async (id: string) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can delete blog posts.");
+      return;
+    }
     if (!confirm("Delete this blog post?")) return;
     try {
       await deleteBlog(id);
@@ -409,6 +446,10 @@ export default function AdminView() {
   // Careers CRUD
   const handleSaveCareer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can save career openings.");
+      return;
+    }
     if (!editingCareer) return;
 
     try {
@@ -422,6 +463,10 @@ export default function AdminView() {
   };
 
   const handleDeleteCareer = async (id: string) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can delete career openings.");
+      return;
+    }
     if (!confirm("Delete this job post?")) return;
     try {
       await deleteCareer(id);
@@ -434,6 +479,10 @@ export default function AdminView() {
   // FAQs CRUD
   const handleSaveFAQ = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can save FAQs.");
+      return;
+    }
     if (!editingFAQ) return;
 
     try {
@@ -447,6 +496,10 @@ export default function AdminView() {
   };
 
   const handleDeleteFAQ = async (id: string) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only administrator can delete FAQs.");
+      return;
+    }
     if (!confirm("Delete this FAQ item?")) return;
     try {
       await deleteFAQ(id);
@@ -458,10 +511,10 @@ export default function AdminView() {
 
   if (authLoading) {
     return (
-      <div className="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+      <div className="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 admin-portal-loading">
         <div className="text-center space-y-2">
-          <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin mx-auto" />
-          <p className="text-sm text-slate-500 font-mono">Initializing secure portal authorization handshake...</p>
+          <RefreshCw className="h-8 w-8 text-cyan-600 animate-spin mx-auto" />
+          <p className="text-sm text-slate-600 font-mono">Initializing secure portal authorization handshake...</p>
         </div>
       </div>
     );
@@ -470,7 +523,7 @@ export default function AdminView() {
   // --- VIEW 1: SIGN IN PAGE ---
   if (!user) {
     return (
-      <div className="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" id="admin-login-screen">
+      <div className="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4" id="admin-login-screen">
         <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden space-y-6">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-cyan-500"></div>
  
@@ -478,7 +531,7 @@ export default function AdminView() {
             <div className="h-12 w-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Client & Admin Portal</h2>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Login</h2>
             <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
               Securely authenticate to review client inquiries, chat with customers in real-time, and manage dynamic site layouts.
             </p>
@@ -561,7 +614,7 @@ export default function AdminView() {
               ) : (
                 <>
                   <LogIn className="h-3.5 w-3.5" />
-                  {authMode === "login" ? "Launch Secure Session" : "Register Admin Session"}
+                  {authMode === "login" ? "Launch Secure Session" : "Register Client Session"}
                 </>
               )}
             </button>
@@ -594,7 +647,7 @@ export default function AdminView() {
 
   // --- VIEW 2: AUTHENTICATED ADMIN DASHBOARD ---
   return (
-    <div className="bg-slate-900 text-white min-h-screen flex flex-col md:flex-row" id="admin-authenticated-dashboard">
+    <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col md:flex-row" id="admin-authenticated-dashboard">
       
       {/* Sidebar Nav */}
       <aside className="w-full md:w-64 bg-slate-950 border-r border-slate-850 p-6 flex flex-col justify-between shrink-0" id="admin-sidebar">
@@ -690,17 +743,6 @@ export default function AdminView() {
         {/* Footer controls */}
         <div className="space-y-4 pt-6 border-t border-slate-900">
           
-          {/* DB Seed control */}
-          {isAdmin && (
-            <button
-              onClick={handleResetDBDefaults}
-              className="w-full text-left px-3.5 py-2 rounded-lg text-[10px] text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 font-semibold flex items-center gap-2 cursor-pointer font-mono"
-            >
-              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-              Reset to default DB Seed
-            </button>
-          )}
-
           {/* User Signout */}
           <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-900/50 p-2.5 rounded-xl border border-slate-850">
             <span className="truncate max-w-[100px] text-slate-300 font-medium">Session Active</span>
@@ -729,7 +771,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 1: PAGE CONTENT (CMS) NO-CODE EDITOR
             ========================================= */}
-        {activeTab === "site" && (
+        {activeTab === "site" && isAdmin && (
           <div className="space-y-8" id="admin-cms-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -861,7 +903,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 2: USER INQUIRIES & EMAIL SEND LOG
             ========================================= */}
-        {activeTab === "inquiries" && (
+        {activeTab === "inquiries" && isAdmin && (
           <div className="space-y-6" id="admin-inquiries-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -943,7 +985,7 @@ export default function AdminView() {
                       <button
                         onClick={() => {
                           setReplyingInquiry(inq);
-                          setReplyMessageText(`Hi ${inq.name.split(" ")[0]},\n\nThank you for transmitting your custom technical specifications to THE SOFTWARE DEVELOPMENT COMPANY!\n\nWe have successfully received your proposal outline regarding "${inq.subject}". Our engineering lead Somil Srivastav is compiling the scope outline and budget parameters. We will contact you back inside 12 hours with a comprehensive roadmap estimate.\n\nWarm regards,\nSomil & Vaibhav Team\nTHE SOFTWARE DEVELOPMENT COMPANY`);
+                          setReplyMessageText(`Hi ${inq.name.split(" ")[0]},\n\nThank you for sharing your project details with THE SOFTWARE DEVELOPMENT COMPANY!\n\nWe have successfully received your message about "${inq.subject}". Our engineering team is reviewing your requirements and budget. We will get back to you within 12 hours with a detailed roadmap and estimate.\n\nWarm regards,\nEngineering Team\nTHE SOFTWARE DEVELOPMENT COMPANY`);
                         }}
                         className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 rounded-lg text-[10px] font-bold text-slate-950 flex items-center gap-1 cursor-pointer"
                       >
@@ -1023,7 +1065,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 3: REAL-TIME SUPPORT LIVE CHAT CONSOLE
             ========================================= */}
-        {activeTab === "chats" && (
+        {activeTab === "chats" && isAdmin && (
           <div className="space-y-6" id="admin-chat-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -1162,7 +1204,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 4: JOB APPLICATIONS TRACKER
             ========================================= */}
-        {activeTab === "applications" && (
+        {activeTab === "applications" && isAdmin && (
           <div className="space-y-6" id="admin-applications-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -1262,7 +1304,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 5: BLOGS MANAGER (CRUD)
             ========================================= */}
-        {activeTab === "blogs" && (
+        {activeTab === "blogs" && isAdmin && (
           <div className="space-y-6" id="admin-blogs-crud-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -1273,19 +1315,23 @@ export default function AdminView() {
                 <p className="text-xs text-slate-400 font-sans">Create and publish development logs to the Blogs section.</p>
               </div>
               <button
-                onClick={() => setEditingBlog({
-                  id: `blog-${Date.now()}`,
-                  title: "",
-                  slug: "",
-                  summary: "",
-                  content: "",
-                  author: "Somil Srivastav",
-                  authorRole: "Co-Founder",
-                  category: "Cloud Engineering",
-                  readTime: "5 min read",
-                  imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600&auto=format&fit=crop",
-                  publishedAt: new Date().toISOString().split("T")[0]
-                })}
+                onClick={() => {
+                  setCustomCategoryMode(false);
+                  setCustomAuthorMode(false);
+                  setEditingBlog({
+                    id: `blog-${Date.now()}`,
+                    title: "",
+                    slug: "",
+                    summary: "",
+                    content: "",
+                    author: "Somil Srivastava",
+                    authorRole: "Co-Founder",
+                    category: "Cloud Engineering",
+                    readTime: "5 min read",
+                    imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600&auto=format&fit=crop",
+                    publishedAt: new Date().toISOString().split("T")[0]
+                  });
+                }}
                 className="px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs uppercase flex items-center gap-1.5 self-start cursor-pointer"
               >
                 <Plus className="h-4.5 w-4.5" /> Publish New Blog
@@ -1304,7 +1350,11 @@ export default function AdminView() {
                   
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => setEditingBlog(b)}
+                      onClick={() => {
+                        setCustomCategoryMode(false);
+                        setCustomAuthorMode(false);
+                        setEditingBlog(b);
+                      }}
                       className="p-2 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-lg cursor-pointer"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -1343,16 +1393,47 @@ export default function AdminView() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-bold text-slate-500">Category</label>
-                        <select
-                          value={editingBlog.category}
-                          onChange={(e) => setEditingBlog({ ...editingBlog, category: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none"
-                        >
-                          <option>Cloud Engineering</option>
-                          <option>Mobile Systems</option>
-                          <option>Enterprise Security</option>
-                        </select>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[9px] uppercase font-bold text-slate-500">Category</label>
+                          <button
+                            type="button"
+                            onClick={() => setCustomCategoryMode(!customCategoryMode)}
+                            className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                          >
+                            {customCategoryMode ? "← Select List" : "✍️ Custom Category"}
+                          </button>
+                        </div>
+                        {customCategoryMode ? (
+                          <input
+                            type="text" required
+                            value={editingBlog.category}
+                            onChange={(e) => setEditingBlog({ ...editingBlog, category: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none font-medium"
+                            placeholder="Type custom category..."
+                          />
+                        ) : (
+                          <select
+                            value={editingBlog.category}
+                            onChange={(e) => {
+                              if (e.target.value === "__custom__") {
+                                setCustomCategoryMode(true);
+                              } else {
+                                setEditingBlog({ ...editingBlog, category: e.target.value });
+                              }
+                            }}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none font-medium"
+                          >
+                            {Array.from(new Set([
+                              "Cloud Engineering", 
+                              "Mobile Systems", 
+                              "Enterprise Security", 
+                              ...blogs.map(b => b.category).filter(Boolean)
+                            ])).map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                            <option value="__custom__">✍️ Custom / New Category...</option>
+                          </select>
+                        )}
                       </div>
                     </div>
 
@@ -1378,15 +1459,46 @@ export default function AdminView() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-bold text-slate-500">Author Name</label>
-                        <select
-                          value={editingBlog.author}
-                          onChange={(e) => setEditingBlog({ ...editingBlog, author: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none"
-                        >
-                          <option>Somil Srivastav</option>
-                          <option>Vaibhav Keshari</option>
-                        </select>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[9px] uppercase font-bold text-slate-500">Author Name</label>
+                          <button
+                            type="button"
+                            onClick={() => setCustomAuthorMode(!customAuthorMode)}
+                            className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                          >
+                            {customAuthorMode ? "← Select List" : "✍️ Custom Author"}
+                          </button>
+                        </div>
+                        {customAuthorMode ? (
+                          <input
+                            type="text" required
+                            value={editingBlog.author}
+                            onChange={(e) => setEditingBlog({ ...editingBlog, author: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none"
+                            placeholder="Type custom author..."
+                          />
+                        ) : (
+                          <select
+                            value={editingBlog.author}
+                            onChange={(e) => {
+                              if (e.target.value === "__custom__") {
+                                setCustomAuthorMode(true);
+                              } else {
+                                setEditingBlog({ ...editingBlog, author: e.target.value });
+                              }
+                            }}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none font-medium"
+                          >
+                            {Array.from(new Set([
+                              "Somil Srivastava", 
+                              "Vaibhavi Keshari", 
+                              ...blogs.map(b => b.author).filter(Boolean)
+                            ])).map(auth => (
+                              <option key={auth} value={auth}>{auth}</option>
+                            ))}
+                            <option value="__custom__">✍️ Custom / New Author...</option>
+                          </select>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-slate-500">Author Role</label>
@@ -1425,7 +1537,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 6: CAREERS OPENINGS MANAGER (CRUD)
             ========================================= */}
-        {activeTab === "careers" && (
+        {activeTab === "careers" && isAdmin && (
           <div className="space-y-6" id="admin-careers-crud-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>
@@ -1590,7 +1702,7 @@ export default function AdminView() {
         {/* =========================================
             TAB 7: FAQS MANAGER (CRUD)
             ========================================= */}
-        {activeTab === "faqs" && (
+        {activeTab === "faqs" && isAdmin && (
           <div className="space-y-6" id="admin-faqs-crud-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
               <div>

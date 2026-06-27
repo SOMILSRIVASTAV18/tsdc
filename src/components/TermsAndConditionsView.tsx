@@ -45,7 +45,7 @@ export default function TermsAndConditionsView({ onNavigate }: TermsAndCondition
               2. Estimator Calculations
             </h2>
             <p>
-              The prices and durations provided by our Interactive Cost Estimator tool represent preliminary roadmap specifications. Binding quotes require formal architectural inspection by Somil Srivastav or Vaibhav Keshari, culminating in a signed SLA agreement.
+              The prices and durations provided by our Interactive Cost Estimator tool represent preliminary roadmap specifications. Binding quotes require formal architectural inspection by our lead engineers, culminating in a signed agreement.
             </p>
           </section>
 

@@ -108,7 +108,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                 Direct Channels
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Skip generic templates. Connect directly with Somil Srivastav or Vaibhav Keshari to negotiate budgets, review design guidelines, or verify technical timelines.
+                Skip generic templates. Connect directly with our lead architects to negotiate budgets, review design guidelines, or verify technical timelines.
               </p>
             </div>
 
@@ -120,7 +120,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <Mail className="h-5 w-5 text-slate-700" />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Principal Architect Email</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Email Us</p>
                   <a href="mailto:somilsrivastav18@gmail.com" className="text-sm font-bold text-slate-900 hover:text-blue-600 hover:underline">
                     somilsrivastav18@gmail.com
                   </a>
@@ -134,8 +134,8 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Active Hotline (WhatsApp)</p>
-                  <a href="tel:+919140443015" className="text-sm font-bold text-slate-900 hover:text-blue-600 hover:underline">
-                    +91 91404 43015
+                  <a href="tel:+917376787697" className="text-sm font-bold text-slate-900 hover:text-blue-600 hover:underline">
+                    +91 7376787697
                   </a>
                 </div>
               </div>
@@ -179,7 +179,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${trackerStep >= 1 ? "bg-emerald-500" : "bg-slate-200"}`}></span>
                     <span className={trackerStep >= 1 ? "text-slate-800 font-semibold" : "text-slate-400"}>
-                      {trackerStep === 1 ? "Writing secure JSON payload to Cloud Firestore..." : "✓ Inbound Inquiry persisted to Firebase Database"}
+                      {trackerStep === 1 ? "Saving your inquiry to our secure database..." : "✓ Inquiry saved to our secure database"}
                     </span>
                   </div>
 
@@ -187,7 +187,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${trackerStep >= 2 ? "bg-emerald-500" : "bg-slate-200 animate-pulse"}`}></span>
                     <span className={trackerStep >= 2 ? "text-slate-800 font-semibold" : "text-slate-400"}>
-                      {trackerStep >= 2 ? "✓ Automated Client Confirmation dispatched via SMTP proxy" : "Pending client notification trigger..."}
+                      {trackerStep >= 2 ? "✓ Automatic confirmation email sent to your email" : "Waiting to send email confirmation..."}
                     </span>
                   </div>
 
@@ -195,7 +195,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${trackerStep >= 3 ? "bg-emerald-500" : "bg-slate-200 animate-pulse"}`}></span>
                     <span className={trackerStep >= 3 ? "text-slate-800 font-semibold" : "text-slate-400"}>
-                      {trackerStep >= 3 ? "✓ Alert dispatched to somilsrivastav18@gmail.com" : "Awaiting administrator bridge connection..."}
+                      {trackerStep >= 3 ? "✓ Notification sent to administrator somilsrivastav18@gmail.com" : "Alerting administrator..."}
                     </span>
                   </div>
 
@@ -203,7 +203,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${trackerStep >= 4 ? "bg-emerald-500 animate-pulse" : "bg-slate-200"}`}></span>
                     <span className={trackerStep >= 4 ? "text-emerald-600 font-bold" : "text-slate-400"}>
-                      {trackerStep >= 4 ? "✓ Live Inquiry Tracking Ticket Issued successfully!" : "Finalizing secure ticket..."}
+                      {trackerStep >= 4 ? "✓ Support ticket created successfully!" : "Finalizing ticket..."}
                     </span>
                   </div>
 
@@ -300,7 +300,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
             {/* Privacy Shield Info */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-[10px] text-slate-400">
               <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>We adhere strictly to zero-trust compliance standards. Your message specifications are cryptographically saved inside standard Firestore containers.</span>
+              <span>We value your privacy. All your project specifications are safely and securely stored in our cloud database.</span>
             </div>
 
           </div>

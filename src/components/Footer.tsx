@@ -152,12 +152,7 @@ export default function Footer({ onNavigate, contactEmail }: FooterProps) {
             >
               Terms & Conditions
             </button>
-            <button 
-              onClick={() => onNavigate("admin")} 
-              className="hover:text-white font-semibold text-slate-400"
-            >
-              Admin Dashboard
-            </button>
+            
           </div>
         </div>
       </div>

@@ -189,7 +189,7 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
                 <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
                   <span>Stack Specialist</span>
                   <span className="font-mono text-slate-800 font-semibold">
-                    {founder.name === "Somil Srivastav" ? "React / Express / Serverless" : "Kotlin / Android / SDK Core"}
+                    {founder.name === "Somil Srivastava" ? "React / Express / Serverless" : "Kotlin / Android / SDK Core"}
                   </span>
                 </div>
               </div>
