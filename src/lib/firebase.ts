@@ -1,9 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { 
-  getFirestore, 
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager
+  getFirestore
 } from "firebase/firestore";
 import { 
   getAuth, 
@@ -11,6 +8,8 @@ import {
   signInWithPopup, 
   signOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   User
 } from "firebase/auth";
 import firebaseConfig from "../../firebase-applet-config.json";
@@ -25,15 +24,11 @@ const app = initializeApp({
   appId: firebaseConfig.appId
 });
 
-// Initialize Firestore with multi-tab persistence enabled for superior client experience
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+// Use standard getFirestore with the specific named databaseId for this applet
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
 
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged };
+export { db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword };
 export type { User };

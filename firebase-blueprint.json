@@ -1,0 +1,171 @@
+{
+  "entities": {
+    "Blog": {
+      "title": "Blog",
+      "description": "A blog post item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "summary": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "category": { "type": "string" },
+        "readTime": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "publishedAt": { "type": "string" },
+        "featured": { "type": "boolean" }
+      },
+      "required": ["id", "title", "slug", "summary", "content", "author", "authorRole", "category", "readTime", "imageUrl", "publishedAt"]
+    },
+    "Career": {
+      "title": "Career",
+      "description": "A job opening position",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "department": { "type": "string" },
+        "location": { "type": "string" },
+        "type": { "type": "string" },
+        "experience": { "type": "string" },
+        "salary": { "type": "string" },
+        "description": { "type": "string" },
+        "requirements": { "type": "array" },
+        "benefits": { "type": "array" },
+        "open": { "type": "boolean" }
+      },
+      "required": ["id", "title", "department", "location", "type", "experience", "salary", "description", "requirements", "benefits", "open"]
+    },
+    "JobApplication": {
+      "title": "JobApplication",
+      "description": "A job application submitted by a candidate",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "careerId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "portfolioUrl": { "type": "string" },
+        "githubUrl": { "type": "string" },
+        "resumeText": { "type": "string" },
+        "appliedAt": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "careerId", "jobTitle", "name", "email", "resumeText", "appliedAt", "status"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "An inquiry form submitted by a visitor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string" },
+        "responseSent": { "type": "string" },
+        "emailLog": { "type": "array" }
+      },
+      "required": ["id", "name", "email", "subject", "message", "createdAt", "status"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A single live chat message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "sender", "text", "timestamp"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "A live chat session tracking unread counts and status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "unreadCount": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "clientName", "lastMessage", "updatedAt", "unreadCount", "active"]
+    },
+    "FAQ": {
+      "title": "FAQ",
+      "description": "An FAQ entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "question", "answer", "category"]
+    },
+    "PageContent": {
+      "title": "PageContent",
+      "description": "The dynamic configurations of site pages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroCTA": { "type": "string" },
+        "aboutTitle": { "type": "string" },
+        "aboutContent": { "type": "string" },
+        "aboutStats": { "type": "array" },
+        "stackTitle": { "type": "string" },
+        "stackSubtitle": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactAddress": { "type": "string" }
+      },
+      "required": ["id", "heroTitle", "heroSubtitle", "heroCTA", "aboutTitle", "aboutContent", "aboutStats", "stackTitle", "stackSubtitle", "contactEmail", "contactPhone", "contactAddress"]
+    }
+  },
+  "firestore": {
+    "site_content": {
+      "schema": { "$ref": "#/entities/PageContent" },
+      "description": "Dynamic homepage page configurations"
+    },
+    "blogs": {
+      "schema": { "$ref": "#/entities/Blog" },
+      "description": "A registry of published blog posts"
+    },
+    "careers": {
+      "schema": { "$ref": "#/entities/Career" },
+      "description": "Active engineering and product job openings"
+    },
+    "faqs": {
+      "schema": { "$ref": "#/entities/FAQ" },
+      "description": "Frequent Questions with categorized tags"
+    },
+    "inquiries": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Visitor contact queries and responses logs"
+    },
+    "applications": {
+      "schema": { "$ref": "#/entities/JobApplication" },
+      "description": "Careers job applications tracking"
+    },
+    "chat_sessions": {
+      "schema": { "$ref": "#/entities/ChatSession" },
+      "description": "Live support chat sessions database"
+    },
+    "chat_sessions/{sessionId}/messages": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Chronological support channel chats log"
+    }
+  }
+}

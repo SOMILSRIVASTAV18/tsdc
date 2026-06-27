@@ -10,7 +10,8 @@ import {
   query, 
   orderBy, 
   onSnapshot,
-  FirestoreError
+  FirestoreError,
+  increment
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Blog, Career, FAQ, PageContent, Inquiry, JobApplication, ChatMessage, ChatSession } from "../types";
@@ -236,6 +237,8 @@ export const updateInquiryStatus = async (id: string, update: Partial<Inquiry>):
 export const submitJobApplication = async (application: Omit<JobApplication, "id" | "appliedAt" | "status">): Promise<JobApplication> => {
   const newApp: JobApplication = {
     ...application,
+    portfolioUrl: application.portfolioUrl || "",
+    githubUrl: application.githubUrl || "",
     id: `app-${Date.now()}`,
     appliedAt: new Date().toISOString(),
     status: "pending"
@@ -298,42 +301,37 @@ export const sendChatMessage = async (
   sender: "client" | "admin", 
   text: string
 ): Promise<void> => {
-  const sessionRef = doc(db, "chat_sessions", sessionId);
-  const now = new Date().toISOString();
-  
-  // 1. Create or update the active session metadata
-  const sessionSnap = await getDoc(sessionRef);
-  if (!sessionSnap.exists()) {
-    const newSession: ChatSession = {
+  try {
+    const sessionRef = doc(db, "chat_sessions", sessionId);
+    const now = new Date().toISOString();
+    
+    // 1. Create or update the active session metadata without blocking on getDoc
+    // We use setDoc with merge: true which is highly robust and operates perfectly in offline/cached modes.
+    const sessionData = {
       id: sessionId,
       clientName,
-      clientEmail,
+      clientEmail: clientEmail || "",
       lastMessage: text,
       updatedAt: now,
-      unreadCount: sender === "client" ? 1 : 0,
+      unreadCount: sender === "client" ? (increment(1) as any) : 0,
       active: true
     };
-    await setDoc(sessionRef, newSession);
-  } else {
-    const data = sessionSnap.data() as ChatSession;
-    await updateDoc(sessionRef, {
-      lastMessage: text,
-      updatedAt: now,
-      unreadCount: sender === "client" ? data.unreadCount + 1 : 0,
-      active: true
-    });
+    await setDoc(sessionRef, sessionData, { merge: true });
+    
+    // 2. Add the message document
+    const messageId = `msg-${Date.now()}`;
+    const messageRef = doc(db, "chat_sessions", sessionId, "messages", messageId);
+    const message: ChatMessage = {
+      id: messageId,
+      sender,
+      text,
+      timestamp: now
+    };
+    await setDoc(messageRef, message);
+  } catch (err) {
+    console.error("Error sending chat message in Firestore:", err);
+    throw err;
   }
-  
-  // 2. Add the message document
-  const messageId = `msg-${Date.now()}`;
-  const messageRef = doc(db, "chat_sessions", sessionId, "messages", messageId);
-  const message: ChatMessage = {
-    id: messageId,
-    sender,
-    text,
-    timestamp: now
-  };
-  await setDoc(messageRef, message);
 };
 
 export const clearSessionUnread = async (sessionId: string): Promise<void> => {

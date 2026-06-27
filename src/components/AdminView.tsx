@@ -36,6 +36,8 @@ import {
   signInWithPopup, 
   signOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   User 
 } from "../lib/firebase";
 import { 
@@ -75,10 +77,12 @@ export default function AdminView() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Custom Login state (Secure Guest / Email bypass fallback to avoid sandbox OAuth popups blocking)
-  const [useEmailBypass, setUseEmailBypass] = useState(false);
-  const [bypassEmail, setBypassEmail] = useState("somilsrivastav18@gmail.com");
-  const [bypassPassword, setBypassPassword] = useState("");
+  // Real Firebase Email & Password authentication states
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("somilsrivastav18@gmail.com");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   // Master State Managers
   const [activeTab, setActiveTab] = useState<"site" | "inquiries" | "chats" | "applications" | "blogs" | "careers" | "faqs">("site");
@@ -168,47 +172,46 @@ export default function AdminView() {
     }
   };
 
-  // Auth logins
+  // Auth logins & Signups
   const handleGoogleLogin = async () => {
+    setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.warn("OAuth Popups might be blocked in frame, suggesting guest login.", err);
-      alert("OAuth Popup failed. We have enabled Direct Bypass Login for you to access the console instantly!");
-      setUseEmailBypass(true);
+    } catch (err: any) {
+      console.warn("Google Sign-In failed:", err);
+      setAuthError(err?.message || "Google Authentication failed. Please use Email/Password sign-in.");
     }
   };
 
-  const handleBypassLogin = () => {
-    // Standard mock verification for smooth user demo access
-    if (bypassEmail.trim() === "somilsrivastav18@gmail.com") {
-      const mockUser = {
-        uid: "guest-admin-uid-somil",
-        email: "somilsrivastav18@gmail.com",
-        displayName: "Somil Srivastav (Principal Developer)",
-        photoURL: ""
-      } as unknown as User;
-      setUser(mockUser);
-      setAuthLoading(false);
-    } else if (bypassEmail.trim() === "vaibhavikeshari@gmail.com") {
-      const mockUser = {
-        uid: "guest-admin-uid-vaib",
-        email: "vaibhavikeshari@gmail.com",
-        displayName: "Vaibhav Keshari (Android Lead)",
-        photoURL: ""
-      } as unknown as User;
-      setUser(mockUser);
-      setAuthLoading(false);
-    } else {
-      // General demo sandbox login
-      const mockUser = {
-        uid: "guest-admin-uid",
-        email: bypassEmail,
-        displayName: bypassEmail.split("@")[0].toUpperCase() + " (Manager)",
-        photoURL: ""
-      } as unknown as User;
-      setUser(mockUser);
-      setAuthLoading(false);
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setAuthError("Email and Password are required.");
+      return;
+    }
+    setAuthSubmitting(true);
+    setAuthError(null);
+    try {
+      if (authMode === "login") {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
+      }
+    } catch (err: any) {
+      console.error("Firebase authentication error:", err);
+      let errorMsg = "Authentication failed. Please verify your details.";
+      if (err?.code === "auth/user-not-found" || err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
+        errorMsg = "Incorrect email or password. If you don't have an account, switch to 'Create Admin Account' mode to register.";
+      } else if (err?.code === "auth/email-already-in-use") {
+        errorMsg = "This email is already in use. Please sign in instead.";
+      } else if (err?.code === "auth/weak-password") {
+        errorMsg = "Password is too weak. Must be at least 6 characters.";
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+      setAuthError(errorMsg);
+    } finally {
+      setAuthSubmitting(false);
     }
   };
 
@@ -438,84 +441,115 @@ export default function AdminView() {
       <div className="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4" id="admin-login-screen">
         <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden space-y-6">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-cyan-500"></div>
-
+ 
           <div className="text-center space-y-2">
             <div className="h-12 w-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Client & Admin Portal</h2>
             <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Access real-time user inquiries, respond to support live chats, and modify dynamic pages without coding.
+              Securely authenticate to review client inquiries, chat with customers in real-time, and manage dynamic site layouts.
             </p>
           </div>
 
-          {/* Standard Google Login */}
-          {!useEmailBypass ? (
-            <div className="space-y-4">
-              <button
-                onClick={handleGoogleLogin}
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold bg-slate-900 hover:bg-slate-850 border border-slate-850 text-slate-200 transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md"
-              >
-                <LogIn className="h-5 w-5 text-cyan-400" />
-                Sign In with Google Auth
-              </button>
+          {/* Toggle Tab */}
+          <div className="grid grid-cols-2 bg-slate-900 p-1 rounded-xl border border-slate-850">
+            <button
+              onClick={() => {
+                setAuthMode("login");
+                setAuthError(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                authMode === "login"
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode("signup");
+                setAuthError(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                authMode === "signup"
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
 
-              <div className="text-center">
-                <button
-                  onClick={() => setUseEmailBypass(true)}
-                  className="text-[11px] text-cyan-400 hover:underline font-semibold font-mono"
-                >
-                  Or use Direct Demo Access Credentials
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Email Bypass / Test Form for easy login on parent frame constraints */
-            <div className="space-y-4">
-              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-850 text-[10px] text-slate-400 font-mono leading-normal">
-                <p className="font-bold text-cyan-400">DEMO HANDSHAKE CONTROL:</p>
-                <p>Google OAuth popups may occasionally get locked by host browsers inside iframes. Use this direct portal bypass with demo credentials.</p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-slate-500 font-mono">Email</label>
-                  <input
-                    type="email"
-                    value={bypassEmail}
-                    onChange={(e) => setBypassEmail(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg py-2 px-3.5 text-xs text-slate-300 font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] uppercase font-bold text-slate-500 font-mono">Password (leave blank for demo)</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={bypassPassword}
-                    onChange={(e) => setBypassPassword(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg py-2 px-3.5 text-xs text-slate-300"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleBypassLogin}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 text-slate-950 font-bold rounded-xl text-xs tracking-wider uppercase shadow-lg cursor-pointer"
-              >
-                Launch Admin Session
-              </button>
-
-              <div className="text-center">
-                <button
-                  onClick={() => setUseEmailBypass(false)}
-                  className="text-[11px] text-slate-500 hover:underline"
-                >
-                  Return to standard Google Authentication
-                </button>
-              </div>
+          {authError && (
+            <div className="bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-rose-200 text-[11px] leading-relaxed font-mono">
+              <p className="font-bold uppercase tracking-wider text-rose-400 mb-0.5">Authentication Error:</p>
+              {authError}
             </div>
           )}
+
+          {/* Email/Password Form */}
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g., somilsrivastav18@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200 font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={authSubmitting}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg cursor-pointer flex items-center justify-center gap-2"
+            >
+              {authSubmitting ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  {authMode === "login" ? "Signing In..." : "Creating Account..."}
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-3.5 w-3.5" />
+                  {authMode === "login" ? "Launch Secure Session" : "Register Admin Session"}
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Separator */}
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-850"></div>
+            <span className="flex-shrink mx-4 text-slate-600 text-[10px] uppercase font-bold tracking-widest font-mono">OR</span>
+            <div className="flex-grow border-t border-slate-850"></div>
+          </div>
+
+          {/* Standard Google Login */}
+          <button
+            onClick={handleGoogleLogin}
+            className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-850 border border-slate-850 text-slate-200 transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md uppercase tracking-wider"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="h-4 w-4" referrerPolicy="no-referrer" />
+            Sign In with Google
+          </button>
 
           {/* Privacy Footnote */}
           <p className="text-[10px] text-slate-600 text-center font-mono">
