@@ -233,7 +233,7 @@ export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps
             {/* Blog Grid */}
             {loading ? (
               <div className="text-center py-12 text-slate-500 font-medium">
-                Fetching tech logs from Firestore logs...
+                Loading technical articles...
               </div>
             ) : filteredBlogs.length === 0 ? (
               <div className="text-center py-12 text-slate-500">

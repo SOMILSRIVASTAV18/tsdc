@@ -236,7 +236,7 @@ export default function LiveChatWidget() {
                 <div className="flex-1 overflow-y-auto space-y-3.5 max-h-[350px] pr-1">
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[10px] text-slate-500 flex items-start gap-1.5 leading-normal">
                     <ShieldAlert className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>Secure End-to-End Handshake initialized. Your chat is active in TSDC's Real-time Firestore.</span>
+                    <span>Secure handshake initialized. Live chat with TSDC is active.</span>
                   </div>
 
                   {messages.length === 0 ? (

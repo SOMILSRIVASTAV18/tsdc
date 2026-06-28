@@ -270,7 +270,7 @@ export default function AdminView() {
     }
     try {
       await updatePageContent(pageContent);
-      alert("Page Content successfully updated in Cloud Firestore database!");
+      alert("Page Content successfully updated!");
     } catch (err) {
       console.error(err);
       alert("Error saving page configurations.");
@@ -301,9 +301,63 @@ export default function AdminView() {
 
     setReplySubmitting(true);
     try {
+      // 1. Dispatch real email through SMTP backend
+      let mailSentSuccessfully = false;
+      let isSimulated = false;
+      let smtpErrorDetail = "";
+      let extraLog = "";
+
+      try {
+        const response = await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: replyingInquiry.email,
+            subject: `RE: ${replyingInquiry.subject}`,
+            html: `
+              <div style="font-family: sans-serif; padding: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+                <div style="margin-bottom: 24px; border-bottom: 2px solid #0ea5e9; padding-bottom: 12px;">
+                  <span style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #0ea5e9; font-family: monospace;">THE SOFTWARE DEVELOPMENT COMPANY</span>
+                  <h2 style="color: #0f172a; font-weight: 800; font-size: 20px; margin-top: 4px; margin-bottom: 0;">Response to Your Inquiry</h2>
+                </div>
+                
+                <p style="font-size: 14px; color: #334155; line-height: 1.6;">Hello <strong>${replyingInquiry.name}</strong>,</p>
+                
+                <div style="font-size: 14px; color: #0f172a; line-height: 1.6; white-space: pre-wrap; background-color: #f8fafc; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; margin: 24px 0;">
+                  ${replyMessageText.replace(/\n/g, "<br />")}
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
+                <p style="font-size: 12px; color: #64748b; margin-bottom: 4px;"><strong>Original Inquiry Subject:</strong> ${replyingInquiry.subject}</p>
+                <p style="font-size: 12px; color: #94a3b8; font-style: italic;">"${replyingInquiry.message}"</p>
+                
+                <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
+                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0; font-family: monospace;">This email is sent on behalf of THE SOFTWARE DEVELOPMENT COMPANY Engineering Board.</p>
+              </div>
+            `
+          })
+        });
+
+        const resData = await response.json();
+        if (response.ok && resData.success) {
+          mailSentSuccessfully = true;
+          isSimulated = !!resData.simulated;
+          if (resData.smtp_error) {
+            smtpErrorDetail = resData.smtp_error;
+            extraLog = " (Simulated due to SMTP auth/connection error)";
+          } else {
+            extraLog = resData.simulated ? " (Simulated Send)" : " (SMTP Transpatched)";
+          }
+        } else {
+          console.warn("Mail server rejected send request:", resData.error);
+        }
+      } catch (mailErr) {
+        console.error("Failed contacting email API server:", mailErr);
+      }
+
       const updatedLogs = [
         ...(replyingInquiry.emailLog || []),
-        `Inquiry Email Response sent at ${new Date().toLocaleString()}: "${replyMessageText.substring(0, 45)}..."`
+        `Inquiry Email Response sent at ${new Date().toLocaleString()}: "${replyMessageText.substring(0, 45)}..."${extraLog}`
       ];
 
       await updateInquiryStatus(replyingInquiry.id, {
@@ -320,7 +374,18 @@ export default function AdminView() {
         emailLog: updatedLogs
       } : i));
 
-      alert(`Confirmation Email reply dispatched successfully to ${replyingInquiry.email}! Logged to database.`);
+      if (mailSentSuccessfully) {
+        if (smtpErrorDetail) {
+          alert(`Inquiry reply logged, but actual SMTP dispatch failed with login/auth error: "${smtpErrorDetail}".\n\nFallback simulated log successfully printed to the container server console. Please verify your Gmail App Password credentials.`);
+        } else if (isSimulated) {
+          alert(`Inquiry reply logged. Email simulation backup printed to server console (no SMTP credentials configured).`);
+        } else {
+          alert(`Inquiry Response Email dispatched successfully to ${replyingInquiry.email}! Transaction logged.`);
+        }
+      } else {
+        alert(`Inquiry reply logged to database, but SMTP server was unreachable or not configured. Verify your .env / secrets credentials.`);
+      }
+      
       setReplyingInquiry(null);
       setReplyMessageText("");
     } catch (err) {
@@ -764,7 +829,7 @@ export default function AdminView() {
         {loading && (
           <div className="bg-slate-950/40 p-3 rounded-xl mb-6 flex items-center gap-2 text-xs font-mono text-cyan-400">
             <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>Syncing database with TSDC Firestore nodes...</span>
+            <span>Synchronizing current configurations...</span>
           </div>
         )}
 
@@ -1074,7 +1139,7 @@ export default function AdminView() {
                   Live Chat Support Control Console
                 </h1>
                 <p className="text-xs text-slate-400">
-                  Read active user threads in real-time. Respond instantly via NoSQL Firestore streaming tunnels.
+                  Read active user threads in real-time. Respond instantly via support messaging channels.
                 </p>
               </div>
             </div>
@@ -1933,7 +1998,7 @@ export default function AdminView() {
                 <MessageSquare className="h-6 w-6 text-cyan-400" />
                 Live Chat Support
               </h1>
-              <p className="text-xs text-slate-400">Converse directly with TSDC Engineers in a real-time Firestore session.</p>
+              <p className="text-xs text-slate-400">Converse directly with TSDC Engineers in a real-time support session.</p>
             </div>
 
             {activeChatSessionId ? (

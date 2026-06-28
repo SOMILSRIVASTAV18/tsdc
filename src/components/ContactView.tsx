@@ -44,33 +44,113 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
     setSubmitted(false);
     setTrackerStep(1); // Step 1: Connecting to Firestore
 
+    const currentFullName = fullName;
+    const currentEmail = email;
+    const currentSubject = subject;
+    const currentMessage = message;
+
     try {
       // Write transaction to Firebase Firestore
       await submitInquiry({
-        name: fullName,
-        email: email,
-        subject: subject,
-        message: message
+        name: currentFullName,
+        email: currentEmail,
+        subject: currentSubject,
+        message: currentMessage
       });
 
-      // Animate tracker status sequence (optimized 300ms intervals for instant feel)
-      setTimeout(() => {
-        setTrackerStep(2); // Step 2: dispatch client email
-        setTimeout(() => {
-          setTrackerStep(3); // Step 3: dispatch admin notification
-          setTimeout(() => {
-            setTrackerStep(4); // Step 4: ticket opened successfully!
-            setIsSubmitting(false);
-            setSubmitted(true);
-            
-            // Clean up inputs on completion
-            setFullName("");
-            setEmail("");
-            setSubject("");
-            setMessage("");
-          }, 300);
-        }, 300);
-      }, 300);
+      // Step 2: dispatch client email
+      setTrackerStep(2);
+      try {
+        await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: currentEmail,
+            subject: `Inquiry Received: ${currentSubject}`,
+            html: `
+              <div style="font-family: sans-serif; padding: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+                <div style="margin-bottom: 24px;">
+                  <span style="font-size: 11px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; color: #0ea5e9;">THE SOFTWARE DEVELOPMENT COMPANY</span>
+                  <h2 style="color: #0f172a; font-weight: 800; font-size: 24px; margin-top: 4px; margin-bottom: 0;">Inquiry Logged Successfully</h2>
+                </div>
+                <p style="font-size: 14px; line-height: 1.6; color: #334155;">Hello <strong>${currentFullName}</strong>,</p>
+                <p style="font-size: 14px; line-height: 1.6; color: #334155;">Thank you for reaching out to us. Your technology consultancy application has been recorded inside our secure servers. A dedicated tracking portal will be provisioned shortly.</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; padding: 16px; border-radius: 12px; margin: 24px 0;">
+                  <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; font-family: monospace;">Specifications Logged:</p>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #0f172a;"><strong>Subject:</strong> ${currentSubject}</p>
+                  <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.5; font-style: italic;">"${currentMessage}"</p>
+                </div>
+                
+                <p style="font-size: 14px; line-height: 1.6; color: #334155;">Our technical engineering board is analyzing your specifications. We will contact you at <strong>${currentEmail}</strong> for a technical briefing.</p>
+                
+                <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
+                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0; font-family: monospace;">This is an automated security transmission. TSDC Central Routing Engine.</p>
+              </div>
+            `
+          })
+        });
+      } catch (clientMailError) {
+        console.warn("Client email dispatch error:", clientMailError);
+      }
+
+      // Step 3: dispatch admin notification
+      setTrackerStep(3);
+      try {
+        await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: "somilsrivastav18@gmail.com",
+            subject: `[ADMIN ALERT] New Inquiry: ${currentSubject}`,
+            html: `
+              <div style="font-family: sans-serif; padding: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+                <div style="margin-bottom: 24px; border-bottom: 2px solid #ef4444; padding-bottom: 12px;">
+                  <span style="font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #ef4444; font-family: monospace;">CRITICAL SECURITY ALERT</span>
+                  <h2 style="color: #0f172a; font-weight: 800; font-size: 20px; margin-top: 4px; margin-bottom: 0;">New Inbound Inquiry Dispatched</h2>
+                </div>
+                
+                <p style="font-size: 14px; color: #334155;">A secure technology consultation proposal has been filed with the following metrics:</p>
+                
+                <table style="width: 100%; font-size: 14px; margin-bottom: 20px;">
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: bold; color: #64748b; width: 140px;">Client Name:</td>
+                    <td style="color: #0f172a; font-weight: 600;">${currentFullName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: bold; color: #64748b;">Client Email:</td>
+                    <td><a href="mailto:${currentEmail}" style="color: #0ea5e9; text-decoration: none;">${currentEmail}</a></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: bold; color: #64748b;">Subject:</td>
+                    <td style="color: #0f172a;">${currentSubject}</td>
+                  </tr>
+                </table>
+                
+                <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 8px; margin: 24px 0;">
+                  <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: bold; color: #991b1b; text-transform: uppercase; font-family: monospace;">Message Body:</p>
+                  <p style="margin: 0; font-size: 13px; color: #7f1d1d; line-height: 1.5; font-family: monospace;">${currentMessage}</p>
+                </div>
+                
+                <p style="font-size: 13px; color: #64748b;">Review this application instantly via the secure Client & Admin Control Dashboard.</p>
+              </div>
+            `
+          })
+        });
+      } catch (adminMailError) {
+        console.warn("Admin email dispatch error:", adminMailError);
+      }
+
+      // Step 4: ticket opened successfully!
+      setTrackerStep(4);
+      setIsSubmitting(false);
+      setSubmitted(true);
+      
+      // Clean up inputs on completion
+      setFullName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
 
     } catch (err) {
       console.error("Error creating inquiry:", err);
@@ -157,7 +237,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
 
             <div className="pt-6 border-t border-slate-200 text-xs text-slate-400 font-mono">
               <p>✓ SLA Response Goal: Under 12 Hours</p>
-              <p className="mt-1">✓ Firestore Database Secure Encryption Active</p>
+              <p className="mt-1">✓ Fully Encrypted Cloud Storage Enabled</p>
             </div>
 
           </div>
@@ -179,7 +259,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${trackerStep >= 1 ? "bg-emerald-500" : "bg-slate-200"}`}></span>
                     <span className={trackerStep >= 1 ? "text-slate-800 font-semibold" : "text-slate-400"}>
-                      {trackerStep === 1 ? "Saving your inquiry to our secure database..." : "✓ Inquiry saved to our secure database"}
+                      {trackerStep === 1 ? "Saving your inquiry..." : "✓ Inquiry saved successfully"}
                     </span>
                   </div>
 
@@ -219,7 +299,7 @@ export default function ContactView({ prefilledData }: ContactViewProps) {
                 </div>
                 <h4 className="text-2xl font-bold text-slate-900">Inquiry Saved Successfully!</h4>
                 <p className="text-slate-600 text-sm max-w-md mx-auto">
-                  Thank you for submitting your specifications. Our real-time notification engine has saved the record to Firestore and notified our leads.
+                  Thank you for submitting your specifications. Our real-time notification engine has saved the record and notified our leads.
                 </p>
                 <button
                   onClick={() => {

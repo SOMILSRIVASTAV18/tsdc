@@ -122,7 +122,7 @@ export default function CareersView() {
         {/* Jobs Listings */}
         {loading ? (
           <div className="text-center py-12 text-slate-500 font-medium">
-            Scanning active career openings from Firebase Firestore...
+            Scanning active career openings...
           </div>
         ) : filteredCareers.length === 0 ? (
           <div className="text-center py-12 text-slate-500 bg-white border border-slate-200 rounded-2xl max-w-xl mx-auto shadow-2xs">

@@ -51,7 +51,7 @@ export default function PrivacyPolicyView({ onNavigate }: PrivacyPolicyViewProps
               2. How We Secure Data
             </h2>
             <p>
-              All client profiles and applications are securely persisted inside cryptographically locked NoSQL Google Firestore cloud database clusters. Communication streams utilize standard TLS 1.3 protocol channels, protecting transit payloads from interception or cross-site telemetry leakage.
+              All client profiles and applications are securely persisted inside cryptographically locked cloud database clusters. Communication streams utilize standard TLS 1.3 protocol channels, protecting transit payloads from interception or cross-site telemetry leakage.
             </p>
           </section>
 
@@ -65,7 +65,7 @@ export default function PrivacyPolicyView({ onNavigate }: PrivacyPolicyViewProps
           <section className="space-y-2">
             <h2 className="text-lg font-bold text-slate-900">4. Your Compliance Rights (GDPR / CCPA)</h2>
             <p>
-              You have full autonomy to request a copy of your stored inquires logs, chat sessions, or candidate application resume profiles. To request immediate purge or deletion from TSDC Firestore nodes, submit a ticket to: <a href="mailto:somilsrivastav18@gmail.com" className="text-blue-600 hover:underline">somilsrivastav18@gmail.com</a>.
+              You have full autonomy to request a copy of your stored inquires logs, chat sessions, or candidate application resume profiles. To request immediate purge or deletion from TSDC secure servers, submit a ticket to: <a href="mailto:somilsrivastav18@gmail.com" className="text-blue-600 hover:underline">somilsrivastav18@gmail.com</a>.
             </p>
           </section>
 

@@ -63,7 +63,7 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
       title: "Real-Time Cloud & SDK Integrations",
       icon: Database,
       subtitle: "Fail-Safe NoSQL Data Architectures",
-      desc: "We integrate enterprise cloud databases like Firestore and Cloud SQL. We enable multi-tab browser caches, real-time message sync, and secure tokenized authentication.",
+      desc: "We integrate enterprise cloud databases and relational storage systems. We enable multi-tab browser caches, real-time message sync, and secure tokenized authentication.",
       deliverables: [
         "Auto-syncing databases (saves offline and uploads when online)",
         "Super fast real-time live chat systems",
@@ -195,7 +195,7 @@ export default function ServicesView({ onNavigate }: ServicesViewProps) {
             {/* Sync Line (Connector) */}
             <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl text-center space-y-2 border-dashed border-blue-500/50">
               <Workflow className="h-6 w-6 text-blue-600 mx-auto animate-spin" style={{ animationDuration: "12s" }} />
-              <p className="font-bold text-blue-600">Firestore Cloud Sync</p>
+              <p className="font-bold text-blue-600">Real-Time Cloud Sync</p>
               <p className="text-xs text-slate-500">Offline-first local multi-tab cache protocol</p>
             </div>
 

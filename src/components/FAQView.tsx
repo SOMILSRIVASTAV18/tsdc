@@ -105,7 +105,7 @@ export default function FAQView() {
         {/* Accordion Questions List */}
         {loading ? (
           <div className="text-center py-12 text-slate-500 font-medium">
-            Querying FAQs registry from Firestore databases...
+            Loading FAQs...
           </div>
         ) : filteredFAQs.length === 0 ? (
           <div className="text-center py-12 text-slate-500 bg-white border border-slate-200 rounded-2xl max-w-xl mx-auto shadow-2xs">
