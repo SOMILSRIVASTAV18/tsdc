@@ -17,8 +17,10 @@ import {
 import { Career } from "../types";
 import { getCareers, submitJobApplication } from "../lib/db";
 import { DEFAULT_CAREERS } from "../data/defaults";
+import { useToast } from "./Toast";
 
 export default function CareersView() {
+  const { showToast } = useToast();
   const [careers, setCareers] = useState<Career[]>(DEFAULT_CAREERS);
   const [loading, setLoading] = useState(false);
   const [selectedDept, setSelectedDept] = useState<string>("All");
@@ -79,7 +81,7 @@ export default function CareersView() {
       setResumeText("");
     } catch (err) {
       console.error("Error submitting job application:", err);
-      alert("Something went wrong. Please check your network and retry.");
+      showToast("Something went wrong. Please check your network and retry.", "error");
     } finally {
       setIsSubmitting(false);
     }

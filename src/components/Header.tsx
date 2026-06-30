@@ -1,4 +1,5 @@
 import React from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Code, Sparkles } from "lucide-react";
 
 interface HeaderProps {
@@ -28,7 +29,13 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center cursor-pointer" onClick={() => handleNavClick("home")} id="header-logo">
+          <motion.div 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center cursor-pointer" 
+            onClick={() => handleNavClick("home")} 
+            id="header-logo"
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-white shadow-sm overflow-hidden p-0.5">
               <img 
                 src="/TSDC.png" 
@@ -43,13 +50,15 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
             <span className="ml-3 font-sans text-[11px] sm:text-xs md:text-sm font-black tracking-[0.18em] text-slate-900 uppercase">
               THE SOFTWARE DEVELOPMENT COMPANY
             </span>
-          </div>
+          </motion.div>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center space-x-1" id="desktop-nav">
             {navItems.map((item) => (
-              <button
+              <motion.button
                 key={item.view}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => handleNavClick(item.view)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   currentView === item.view
@@ -59,10 +68,12 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
                 id={`nav-${item.view}`}
               >
                 {item.label}
-              </button>
+              </motion.button>
             ))}
             
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => handleNavClick("admin")}
               className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
                 currentView === "admin"
@@ -72,7 +83,7 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
               id="nav-admin-btn"
             >
               Login
-            </button>
+            </motion.button>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -89,33 +100,42 @@ export default function Header({ currentView, onNavigate }: HeaderProps) {
       </div>
 
       {/* Mobile Nav */}
-      {isOpen && (
-        <div className="md:hidden border-t border-slate-100 bg-white/95 py-2 px-4 space-y-1 shadow-md" id="mobile-nav">
-          {navItems.map((item) => (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden border-t border-slate-100 bg-white/95 py-2 px-4 space-y-1 shadow-md overflow-hidden" 
+            id="mobile-nav"
+          >
+            {navItems.map((item) => (
+              <button
+                key={item.view}
+                onClick={() => handleNavClick(item.view)}
+                className={`block w-full text-left px-3 py-2.5 rounded-lg text-base font-medium ${
+                  currentView === item.view
+                    ? "bg-slate-100 text-slate-900"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
             <button
-              key={item.view}
-              onClick={() => handleNavClick(item.view)}
-              className={`block w-full text-left px-3 py-2.5 rounded-lg text-base font-medium ${
-                currentView === item.view
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              onClick={() => handleNavClick("admin")}
+              className={`block w-full text-center mt-4 px-3 py-2.5 rounded-lg text-base font-medium border ${
+                currentView === "admin"
+                  ? "bg-slate-900 text-white border-slate-950 font-semibold"
+                  : "bg-slate-100 text-slate-700 border-slate-200"
               }`}
             >
-              {item.label}
+              Login
             </button>
-          ))}
-          <button
-            onClick={() => handleNavClick("admin")}
-            className={`block w-full text-center mt-4 px-3 py-2.5 rounded-lg text-base font-medium border ${
-              currentView === "admin"
-                ? "bg-slate-900 text-white border-slate-950 font-semibold"
-                : "bg-slate-100 text-slate-700 border-slate-200"
-            }`}
-          >
-            Login
-          </button>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

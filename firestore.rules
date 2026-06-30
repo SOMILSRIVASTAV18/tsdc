@@ -38,5 +38,41 @@ service cloud.firestore {
         allow read, write: if true;
       }
     }
+
+    // Project deliverables: Accessible only by admins and the designated client
+    match /deliverables/{deliverableId} {
+      allow read: if request.auth != null && (
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.56da".lower() ||
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.com" || 
+        resource.data.clientEmail.lower() == request.auth.token.email.lower()
+      );
+      allow create: if request.auth != null && (
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.56da".lower() ||
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.com" || 
+        request.resource.data.clientEmail.lower() == request.auth.token.email.lower()
+      );
+      allow update, delete: if request.auth != null && (
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.56da".lower() ||
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.com" || 
+        resource.data.clientEmail.lower() == request.auth.token.email.lower()
+      );
+    }
+
+    // Deliverables chats and messages: Accessible only by admins and the matching client
+    match /deliverables_chats/{clientEmail} {
+      allow read, write: if request.auth != null && (
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.56da".lower() ||
+        request.auth.token.email.lower() == "somilsrivastav18@gmail.com" || 
+        clientEmail.lower() == request.auth.token.email.lower()
+      );
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && (
+          request.auth.token.email.lower() == "somilsrivastav18@gmail.56da".lower() ||
+          request.auth.token.email.lower() == "somilsrivastav18@gmail.com" || 
+          clientEmail.lower() == request.auth.token.email.lower()
+        );
+      }
+    }
   }
 }

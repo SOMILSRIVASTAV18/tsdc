@@ -10,6 +10,7 @@ import {
 import { Blog } from "../types";
 import { getBlogs } from "../lib/db";
 import { DEFAULT_BLOGS } from "../data/defaults";
+import { useToast } from "./Toast";
 
 interface BlogsViewProps {
   activeBlogSlug?: string;
@@ -17,6 +18,7 @@ interface BlogsViewProps {
 }
 
 export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps) {
+  const { showToast } = useToast();
   const [blogs, setBlogs] = useState<Blog[]>(DEFAULT_BLOGS);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -88,7 +90,7 @@ export default function BlogsView({ activeBlogSlug, onNavigate }: BlogsViewProps
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert("Blog post URL copied to clipboard!");
+      showToast("Blog post link successfully copied to your clipboard!", "info");
     }
   };
 

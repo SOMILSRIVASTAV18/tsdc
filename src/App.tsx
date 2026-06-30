@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import HomeView from "./components/HomeView";
@@ -165,34 +166,44 @@ export default function App() {
       <Header currentView={currentView} onNavigate={handleNavigate} />
 
       {/* Primary Routing Portal */}
-      <main className="flex-grow" id="app-viewport">
-        {currentView === "home" && (
-          <HomeView pageContent={pageContent} onNavigate={handleNavigate} />
-        )}
-        {currentView === "services" && (
-          <ServicesView onNavigate={handleNavigate} />
-        )}
-        {currentView === "careers" && (
-          <CareersView />
-        )}
-        {currentView === "blogs" && (
-          <BlogsView activeBlogSlug={activeBlogSlug} onNavigate={handleNavigate} />
-        )}
-        {currentView === "faq" && (
-          <FAQView />
-        )}
-        {currentView === "contact" && (
-          <ContactView prefilledData={prefilledContactData} />
-        )}
-        {currentView === "admin" && (
-          <AdminView />
-        )}
-        {currentView === "privacy-policy" && (
-          <PrivacyPolicyView onNavigate={handleNavigate} />
-        )}
-        {currentView === "terms-and-conditions" && (
-          <TermsAndConditionsView onNavigate={handleNavigate} />
-        )}
+      <main className="flex-grow overflow-x-hidden relative" id="app-viewport">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView + (activeBlogSlug || "")}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {currentView === "home" && (
+              <HomeView pageContent={pageContent} onNavigate={handleNavigate} />
+            )}
+            {currentView === "services" && (
+              <ServicesView onNavigate={handleNavigate} />
+            )}
+            {currentView === "careers" && (
+              <CareersView />
+            )}
+            {currentView === "blogs" && (
+              <BlogsView activeBlogSlug={activeBlogSlug} onNavigate={handleNavigate} />
+            )}
+            {currentView === "faq" && (
+              <FAQView />
+            )}
+            {currentView === "contact" && (
+              <ContactView prefilledData={prefilledContactData} />
+            )}
+            {currentView === "admin" && (
+              <AdminView />
+            )}
+            {currentView === "privacy-policy" && (
+              <PrivacyPolicyView onNavigate={handleNavigate} />
+            )}
+            {currentView === "terms-and-conditions" && (
+              <TermsAndConditionsView onNavigate={handleNavigate} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Universal Footer */}

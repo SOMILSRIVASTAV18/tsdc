@@ -50,6 +50,20 @@ export interface Inquiry {
   status: "unread" | "read" | "replied" | "archived";
   responseSent?: string;
   emailLog?: string[];
+  projectApproved?: boolean;
+  projectStatus?: "progress" | "done";
+}
+
+export interface DeliverablesMessage {
+  id: string;
+  sender: "client" | "admin";
+  senderName: string;
+  text: string;
+  timestamp: string;
+  fileName?: string;
+  fileSize?: string;
+  fileType?: string;
+  fileData?: string;
 }
 
 export interface ChatMessage {
@@ -90,3 +104,27 @@ export interface PageContent {
   contactPhone: string;
   contactAddress: string;
 }
+
+export interface ProjectDeliverable {
+  id: string;
+  clientEmail: string;
+  uploadedBy: string; // Email of the uploader, or "client" / "admin"
+  uploadedByName: string; // Display name of uploader
+  fileName: string;
+  fileSize: string; // e.g. "140 KB", "1.2 MB"
+  fileType: string; // e.g. "PDF Document", "Figma Design Mockup", "Technical requirements", "ZIP Archive", "Image"
+  uploadedAt: string; // ISO String
+  description: string;
+  fileData?: string; // base64 encoded data string or text contents
+  downloadUrl?: string; // fallback mock or external link
+}
+
+export interface DeliverablesChatMetadata {
+  id?: string;
+  clientEmail: string;
+  lastMessage: string;
+  updatedAt: string;
+  unreadCountAdmin: number;
+  unreadCountClient: number;
+}
+

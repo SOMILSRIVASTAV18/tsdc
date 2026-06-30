@@ -10,6 +10,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   User
 } from "firebase/auth";
 import firebaseConfig from "../../firebase-applet-config.json";
@@ -30,5 +31,5 @@ const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword };
+export { db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail };
 export type { User };

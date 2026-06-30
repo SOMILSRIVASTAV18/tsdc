@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -33,18 +34,38 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
             
             {/* Left Col: Headings */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800"
+              >
                 <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
                 <span>Next-Gen Enterprise Architects</span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              </motion.div>
+              <motion.h1 
+                initial={{ opacity: 0, y: 25 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight"
+              >
                 {pageContent.heroTitle}
-              </h1>
-              <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto lg:mx-0"
+              >
                 {pageContent.heroSubtitle}
-              </p>
+              </motion.p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4"
+              >
                 <button
                   onClick={() => onNavigate("contact")}
                   className="px-8 py-4 rounded-xl text-base font-semibold bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer"
@@ -60,23 +81,33 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
                   Explore Our Services
                   <ChevronRight className="h-5 w-5 text-slate-450" />
                 </button>
-              </div>
+              </motion.div>
 
               {/* Stack logos indicators */}
-              <div className="pt-8 border-t border-slate-100 max-w-lg mx-auto lg:mx-0">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="pt-8 border-t border-slate-100 max-w-lg mx-auto lg:mx-0"
+              >
                 <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-3">
                   Enterprise-grade execution
                 </p>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600" /> Kotlin Native Android</span>
-                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600" /> React Web & Native</span>
-                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600" /> Secure Serverless API</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600 animate-pulse" /> Kotlin Native Android</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600 animate-pulse" /> React Web & Native</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-emerald-600 animate-pulse" /> Secure Serverless API</span>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Right Col: Interactive Bento Preview Card */}
-            <div className="lg:col-span-5 mt-12 lg:mt-0 relative">
+            <motion.div 
+              initial={{ opacity: 0, x: 40, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-5 mt-12 lg:mt-0 relative"
+            >
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-xl relative overflow-hidden" id="hero-bento-card">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
                   <div className="flex items-center space-x-2">
@@ -89,36 +120,53 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
                 
                 <div className="space-y-4 font-mono text-xs text-slate-500">
                   <p className="text-blue-600 font-semibold"># Engineering Operations Overview</p>
-                  <div className="bg-white p-3.5 rounded-lg border border-slate-200/60 space-y-2 shadow-sm">
-                    <p className="text-emerald-700 font-bold">● ACTIVE CLIENT PORTAL</p>
+                  
+                  <motion.div 
+                    whileHover={{ y: -4, scale: 1.02 }}
+                    transition={{ duration: 0.2 }}
+                    className="bg-white p-3.5 rounded-lg border border-slate-200/60 space-y-2 shadow-sm cursor-pointer"
+                  >
+                    <p className="text-emerald-700 font-bold flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                      ● ACTIVE CLIENT PORTAL
+                    </p>
                     <p className="text-slate-800 text-sm font-semibold">AK Industries Ltd.</p>
                     <p className="text-slate-500">Industrial IoT and secure database control app successfully live on Google Play Store.</p>
                     <a href="https://play.google.com/store/apps/details?id=com.akindustries.app" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 mt-1 text-[11px]">
                       View Listing <ExternalLink className="h-3 w-3" />
                     </a>
-                  </div>
+                  </motion.div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-sm">
+                    <motion.div 
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-sm cursor-pointer"
+                    >
                       <p className="text-blue-600 text-[11px]">PROJECT SYSTEM</p>
                       <p className="text-slate-800 font-semibold mt-0.5">Pulse Rank</p>
                       <p className="text-[10px] text-slate-400">Live SEO index analytics</p>
                       <a href="https://pulserank.in" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline flex items-center gap-1 mt-1 text-[10px]">
                         pulserank.in <ArrowUpRight className="h-2.5 w-2.5" />
                       </a>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-sm">
+                    </motion.div>
+                    
+                    <motion.div 
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-sm cursor-pointer"
+                    >
                       <p className="text-amber-600 text-[11px]">FINANCIAL INTEL</p>
                       <p className="text-slate-800 font-semibold mt-0.5">FinTrack Pro</p>
                       <p className="text-[10px] text-slate-400">Cloudflare edge sync</p>
                       <a href="https://fintrackproapp.netlify.app" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline flex items-center gap-1 mt-1 text-[10px]">
                         fintrackproapp <ArrowUpRight className="h-2.5 w-2.5" />
                       </a>
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
           </div>
         </div>
@@ -129,14 +177,21 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {pageContent.aboutStats.map((stat, i) => (
-              <div key={i} className="space-y-1">
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="space-y-1"
+              >
                 <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
                   {stat.value}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium tracking-wide uppercase">
                   {stat.label}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -158,10 +213,15 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {CORE_TEAM.map((founder) => (
-              <div 
+            {CORE_TEAM.map((founder, index) => (
+              <motion.div 
                 key={founder.name} 
-                className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-6 md:p-8 space-y-6 transition-all duration-300 shadow-sm flex flex-col justify-between"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
+                className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl p-6 md:p-8 space-y-6 transition-all duration-300 shadow-sm flex flex-col justify-between cursor-pointer"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -192,7 +252,7 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
                     {founder.name === "Somil Srivastava" ? "React / Express / Serverless" : "Kotlin / Android / SDK Core"}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -224,10 +284,15 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8" id="projects-grid">
-            {CLIENT_PORTFOLIOS.map((client) => (
-              <div 
+            {CLIENT_PORTFOLIOS.map((client, index) => (
+              <motion.div 
                 key={client.name} 
-                className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between space-y-6 shadow-xs"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -6, boxShadow: "0 15px 30px -10px rgba(0,0,0,0.08)" }}
+                className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between space-y-6 shadow-xs cursor-pointer"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -285,7 +350,7 @@ export default function HomeView({ pageContent, onNavigate }: HomeViewProps) {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

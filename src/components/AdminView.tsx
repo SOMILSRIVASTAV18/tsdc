@@ -17,6 +17,8 @@ import {
   Mail, 
   ExternalLink, 
   Eye, 
+  EyeOff,
+  KeyRound,
   Trash, 
   RefreshCw,
   Bell,
@@ -28,7 +30,14 @@ import {
   CheckCircle2,
   FolderOpen,
   X,
-  Circle
+  Circle,
+  Upload,
+  Download,
+  FileText,
+  FileImage,
+  FileArchive,
+  Paperclip,
+  Lock
 } from "lucide-react";
 import { 
   auth, 
@@ -38,6 +47,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   User 
 } from "../lib/firebase";
 import { 
@@ -48,7 +58,10 @@ import {
   Inquiry, 
   JobApplication, 
   ChatSession, 
-  ChatMessage 
+  ChatMessage,
+  ProjectDeliverable,
+  DeliverablesMessage,
+  DeliverablesChatMetadata
 } from "../types";
 import { 
   getPageContent, 
@@ -70,11 +83,24 @@ import {
   listenToSessions, 
   listenToMessages, 
   sendChatMessage,
-  clearSessionUnread
+  clearSessionUnread,
+  getDeliverables,
+  saveDeliverable,
+  deleteDeliverable,
+  approveInquiryProject,
+  checkProjectApproval,
+  listenToDeliverablesMessages,
+  sendDeliverablesMessage,
+  listenToDeliverablesChats,
+  listenToSingleDeliverablesChat,
+  clearDeliverablesUnread,
+  updateProjectStatus
 } from "../lib/db";
 import { DEFAULT_PAGE_CONTENT, DEFAULT_BLOGS, DEFAULT_CAREERS, DEFAULT_FAQS } from "../data/defaults";
+import { useToast } from "./Toast";
 
 export default function AdminView() {
+  const { showToast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
@@ -84,6 +110,16 @@ export default function AdminView() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+
+  // Show/Hide password toggle state
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot password states
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   // Master State Managers
   const [activeTab, setActiveTab] = useState<string>("site");
@@ -97,6 +133,18 @@ export default function AdminView() {
   const [blogs, setBlogs] = useState<Blog[]>(DEFAULT_BLOGS);
   const [careers, setCareers] = useState<Career[]>(DEFAULT_CAREERS);
   const [faqs, setFaqs] = useState<FAQ[]>(DEFAULT_FAQS);
+  
+  // Project Deliverables & Document Management
+  const [deliverables, setDeliverables] = useState<ProjectDeliverable[]>([]);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; size: string; type: string; base64: string } | null>(null);
+  const [deliverableForm, setDeliverableForm] = useState({
+    clientEmail: "",
+    fileName: "",
+    description: "",
+  });
+  const [uploadingDeliverable, setUploadingDeliverable] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Selected chat session in real-time
   const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
@@ -129,6 +177,27 @@ export default function AdminView() {
   const [newClientChatText, setNewClientChatText] = useState("");
   const [clientChatSending, setClientChatSending] = useState(false);
 
+  // Deliverables Chat and Project Approval States
+  const [deliverablesChatMessages, setDeliverablesChatMessages] = useState<DeliverablesMessage[]>([]);
+  const [deliverablesChatMessageText, setDeliverablesChatMessageText] = useState("");
+  const [isProjectApproved, setIsProjectApproved] = useState(false);
+  const [selectedClientEmailForChat, setSelectedClientEmailForChat] = useState("");
+  const [isManualEmailInput, setIsManualEmailInput] = useState(false);
+  const [chatFileAttachment, setChatFileAttachment] = useState<{ name: string; size: string; type: string; base64: string } | null>(null);
+  const [chatFileError, setChatFileError] = useState<string | null>(null);
+  const [sendingChatFile, setSendingChatFile] = useState(false);
+  const [deliverablesChats, setDeliverablesChats] = useState<DeliverablesChatMetadata[]>([]);
+  const [clientChatMeta, setClientChatMeta] = useState<DeliverablesChatMetadata | null>(null);
+
+  // Manual project approval states
+  const [manualApprovalEmail, setManualApprovalEmail] = useState("");
+  const [manualApprovalName, setManualApprovalName] = useState("");
+  const [approvingEmailProgress, setApprovingEmailProgress] = useState(false);
+
+  // Sub-tabs for layout simplification
+  const [adminDeliverablesTab, setAdminDeliverablesTab] = useState<"files" | "chat" | "access">("files");
+  const [clientDeliverablesTab, setClientDeliverablesTab] = useState<"files" | "chat">("files");
+
   // Monitor Authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -144,7 +213,7 @@ export default function AdminView() {
       if (user.email === "somilsrivastav18@gmail.com") {
         setActiveTab("site");
       } else {
-        setActiveTab("client_inquiries");
+        setActiveTab("client_deliverables");
         setClientInquiryName(user.displayName || user.email?.split("@")[0] || "");
       }
     }
@@ -161,8 +230,23 @@ export default function AdminView() {
       setChatSessions(sessions);
     }, emailFilter);
 
+    // Subscribe to deliverables chats metadata
+    let unsubscribeDeliverablesChats = () => {};
+    let unsubscribeSingleDeliverablesChat = () => {};
+    if (user.email === "somilsrivastav18@gmail.com") {
+      unsubscribeDeliverablesChats = listenToDeliverablesChats((chats) => {
+        setDeliverablesChats(chats);
+      });
+    } else if (user.email) {
+      unsubscribeSingleDeliverablesChat = listenToSingleDeliverablesChat(user.email, (chat) => {
+        setClientChatMeta(chat);
+      });
+    }
+
     return () => {
       unsubscribeChats();
+      unsubscribeDeliverablesChats();
+      unsubscribeSingleDeliverablesChat();
     };
   }, [user]);
 
@@ -177,6 +261,36 @@ export default function AdminView() {
     return () => unsubscribeMessages();
   }, [user, activeChatSessionId]);
 
+  // Subscribe to deliverables chat messages in real-time
+  useEffect(() => {
+    if (!user) return;
+    
+    let chatEmail = "";
+    if (isAdmin) {
+      if (selectedClientEmailForChat) {
+        chatEmail = selectedClientEmailForChat;
+      }
+    } else {
+      if (user.email) {
+        chatEmail = user.email;
+      }
+    }
+
+    if (!chatEmail) {
+      setDeliverablesChatMessages([]);
+      return;
+    }
+
+    // Clear unread count when opened
+    clearDeliverablesUnread(chatEmail, isAdmin ? "admin" : "client");
+
+    const unsubscribe = listenToDeliverablesMessages(chatEmail, (messages) => {
+      setDeliverablesChatMessages(messages);
+    });
+
+    return () => unsubscribe();
+  }, [user, isAdmin, selectedClientEmailForChat]);
+
   const loadAdminData = async () => {
     if (!user) return;
     setLoading(true);
@@ -184,13 +298,14 @@ export default function AdminView() {
       const isUserAdmin = user.email === "somilsrivastav18@gmail.com";
       const emailFilter = isUserAdmin ? undefined : user.email || undefined;
 
-      const [page, inq, apps, bgs, crs, fqs] = await Promise.all([
+      const [page, inq, apps, bgs, crs, fqs, dels] = await Promise.all([
         getPageContent(),
         getInquiries(emailFilter),
         getJobApplications(emailFilter),
         getBlogs(),
         getCareers(),
-        getFAQs()
+        getFAQs(),
+        getDeliverables(emailFilter)
       ]);
 
       setPageContent(page);
@@ -199,6 +314,12 @@ export default function AdminView() {
       setBlogs(bgs);
       setCareers(crs);
       setFaqs(fqs);
+      setDeliverables(dels);
+
+      if (!isUserAdmin && user.email) {
+        const approved = await checkProjectApproval(user.email);
+        setIsProjectApproved(approved);
+      }
     } catch (e) {
       console.error("Error loading user/admin data:", e);
     } finally {
@@ -252,6 +373,32 @@ export default function AdminView() {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryEmail.trim()) {
+      setRecoveryError("Please enter your email address.");
+      return;
+    }
+    setRecoverySubmitting(true);
+    setRecoveryError(null);
+    setRecoverySuccess(null);
+    try {
+      await sendPasswordResetEmail(auth, recoveryEmail.trim());
+      setRecoverySuccess("Password reset instructions have been sent successfully. Please check your inbox and spam folders.");
+    } catch (err: any) {
+      console.error("Firebase reset password error:", err);
+      let errorMsg = "Failed to send reset link. Please verify the email format or try again.";
+      if (err?.code === "auth/user-not-found") {
+        errorMsg = "No account found associated with this email address.";
+      } else if (err?.code === "auth/invalid-email") {
+        errorMsg = "Please provide a valid email address.";
+      }
+      setRecoveryError(errorMsg);
+    } finally {
+      setRecoverySubmitting(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -265,36 +412,38 @@ export default function AdminView() {
   const handleSavePageContent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized access. Only administrator somilsrivastav18@gmail.com is permitted to save configurations.");
+      showToast("Unauthorized access. Only administrator somilsrivastav18@gmail.com is permitted to save configurations.", "error");
       return;
     }
     try {
       await updatePageContent(pageContent);
-      alert("Page Content successfully updated!");
+      showToast("Page configurations successfully saved and updated on production pipeline!", "success");
     } catch (err) {
       console.error(err);
-      alert("Error saving page configurations.");
+      showToast("Error saving page configurations. Please check database latency.", "error");
     }
   };
 
   // Operations: Inquiry actions
   const handleUpdateInquiry = async (id: string, status: Inquiry["status"]) => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can update inquiries.");
+      showToast("Unauthorized: Only administrator can update inquiries.", "error");
       return;
     }
     try {
       await updateInquiryStatus(id, { status });
       setInquiries(inquiries.map(i => i.id === id ? { ...i, status } : i));
+      showToast(`Inquiry status updated to ${status}!`, "success");
     } catch (e) {
       console.error(e);
+      showToast("Failed to update inquiry status.", "error");
     }
   };
 
   const handleInquiryReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can reply to inquiries.");
+      showToast("Unauthorized: Only administrator can reply to inquiries.", "error");
       return;
     }
     if (!replyingInquiry || !replyMessageText.trim()) return;
@@ -376,21 +525,21 @@ export default function AdminView() {
 
       if (mailSentSuccessfully) {
         if (smtpErrorDetail) {
-          alert(`Inquiry reply logged, but actual SMTP dispatch failed with login/auth error: "${smtpErrorDetail}".\n\nFallback simulated log successfully printed to the container server console. Please verify your Gmail App Password credentials.`);
+          showToast(`Inquiry reply logged, but actual SMTP dispatch failed: "${smtpErrorDetail}". Fallback simulated log printed to container console.`, "warning", 6000);
         } else if (isSimulated) {
-          alert(`Inquiry reply logged. Email simulation backup printed to server console (no SMTP credentials configured).`);
+          showToast(`Inquiry reply logged. Email simulation backup printed to server console (no SMTP credentials configured).`, "info", 5000);
         } else {
-          alert(`Inquiry Response Email dispatched successfully to ${replyingInquiry.email}! Transaction logged.`);
+          showToast(`Inquiry Response Email dispatched successfully to ${replyingInquiry.email}! Transaction logged.`, "success");
         }
       } else {
-        alert(`Inquiry reply logged to database, but SMTP server was unreachable or not configured. Verify your .env / secrets credentials.`);
+        showToast(`Inquiry reply logged to database, but SMTP server was unreachable or not configured. Verify your secrets credentials.`, "warning", 5000);
       }
       
       setReplyingInquiry(null);
       setReplyMessageText("");
     } catch (err) {
       console.error(err);
-      alert("Failed to submit reply logs.");
+      showToast("Failed to submit reply logs.", "error");
     } finally {
       setReplySubmitting(false);
     }
@@ -400,7 +549,7 @@ export default function AdminView() {
   const handleSendAdminChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can send messages through the Admin Chat console.");
+      showToast("Unauthorized: Only administrator can send messages through the Admin Chat console.", "error");
       return;
     }
     if (!activeChatSessionId || !newAdminChatText.trim()) return;
@@ -423,27 +572,30 @@ export default function AdminView() {
       );
     } catch (e) {
       console.error("Error replying to chat:", e);
+      showToast("Failed to send chat message.", "error");
     }
   };
 
   // Operations: Application actions
   const handleUpdateApplication = async (id: string, status: JobApplication["status"]) => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can update job application status.");
+      showToast("Unauthorized: Only administrator can update job application status.", "error");
       return;
     }
     try {
       await updateApplicationStatus(id, status);
       setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
+      showToast(`Job application status updated to ${status}!`, "success");
     } catch (e) {
       console.error(e);
+      showToast("Failed to update job application status.", "error");
     }
   };
 
   // Operations: Reset DB defaults
   const handleResetDBDefaults = async () => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can reset database configurations.");
+      showToast("Unauthorized: Only administrator can reset database configurations.", "error");
       return;
     }
     if (!confirm("Are you sure you want to reset all site pages, blogs, FAQs, and careers to default configurations? This will overwrite manual changes.")) return;
@@ -466,10 +618,10 @@ export default function AdminView() {
       }
 
       await loadAdminData();
-      alert("Database successfully reset and seeded with default configurations!");
+      showToast("Database successfully reset and seeded with default configurations!", "success");
     } catch (err) {
       console.error(err);
-      alert("Failed to reset database.");
+      showToast("Failed to reset database.", "error");
     } finally {
       setLoading(false);
     }
@@ -479,7 +631,7 @@ export default function AdminView() {
   const handleSaveBlog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can save blog posts.");
+      showToast("Unauthorized: Only administrator can save blog posts.", "error");
       return;
     }
     if (!editingBlog) return;
@@ -488,23 +640,26 @@ export default function AdminView() {
       await saveBlog(editingBlog);
       setEditingBlog(null);
       loadAdminData();
-      alert("Blog post saved!");
+      showToast("Blog post saved successfully!", "success");
     } catch (e) {
       console.error(e);
+      showToast("Failed to save blog post.", "error");
     }
   };
 
   const handleDeleteBlog = async (id: string) => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can delete blog posts.");
+      showToast("Unauthorized: Only administrator can delete blog posts.", "error");
       return;
     }
     if (!confirm("Delete this blog post?")) return;
     try {
       await deleteBlog(id);
       loadAdminData();
+      showToast("Blog post deleted.", "info");
     } catch (e) {
       console.error(e);
+      showToast("Failed to delete blog post.", "error");
     }
   };
 
@@ -512,7 +667,7 @@ export default function AdminView() {
   const handleSaveCareer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can save career openings.");
+      showToast("Unauthorized: Only administrator can save career openings.", "error");
       return;
     }
     if (!editingCareer) return;
@@ -521,23 +676,26 @@ export default function AdminView() {
       await saveCareer(editingCareer);
       setEditingCareer(null);
       loadAdminData();
-      alert("Career opening saved!");
+      showToast("Career opening saved!", "success");
     } catch (e) {
       console.error(e);
+      showToast("Failed to save career opening.", "error");
     }
   };
 
   const handleDeleteCareer = async (id: string) => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can delete career openings.");
+      showToast("Unauthorized: Only administrator can delete career openings.", "error");
       return;
     }
     if (!confirm("Delete this job post?")) return;
     try {
       await deleteCareer(id);
       loadAdminData();
+      showToast("Career opening deleted.", "info");
     } catch (e) {
       console.error(e);
+      showToast("Failed to delete career opening.", "error");
     }
   };
 
@@ -545,7 +703,7 @@ export default function AdminView() {
   const handleSaveFAQ = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can save FAQs.");
+      showToast("Unauthorized: Only administrator can save FAQs.", "error");
       return;
     }
     if (!editingFAQ) return;
@@ -554,15 +712,16 @@ export default function AdminView() {
       await saveFAQ(editingFAQ);
       setEditingFAQ(null);
       loadAdminData();
-      alert("FAQ item saved!");
+      showToast("FAQ item saved!", "success");
     } catch (e) {
       console.error(e);
+      showToast("Failed to save FAQ item.", "error");
     }
   };
 
   const handleDeleteFAQ = async (id: string) => {
     if (!isAdmin) {
-      alert("Unauthorized: Only administrator can delete FAQs.");
+      showToast("Unauthorized: Only administrator can delete FAQs.", "error");
       return;
     }
     if (!confirm("Delete this FAQ item?")) return;
@@ -571,6 +730,406 @@ export default function AdminView() {
       loadAdminData();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // --- PROJECT DELIVERABLES / SECURE DOCUMENT HANDLERS ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 800 * 1024) {
+      setFileError("File is too large. Maximum size is 800 KB for database storage security.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      
+      let sizeStr = "";
+      if (file.size < 1024) sizeStr = `${file.size} B`;
+      else if (file.size < 1024 * 1024) sizeStr = `${(file.size / 1024).toFixed(1)} KB`;
+      else sizeStr = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      setSelectedFile({
+        name: file.name,
+        size: sizeStr,
+        type: file.type || "application/octet-stream",
+        base64: base64String,
+      });
+      setDeliverableForm(prev => ({ ...prev, fileName: file.name }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    setFileError(null);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (file.size > 800 * 1024) {
+      setFileError("File is too large. Maximum size is 800 KB for database storage security.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      
+      let sizeStr = "";
+      if (file.size < 1024) sizeStr = `${file.size} B`;
+      else if (file.size < 1024 * 1024) sizeStr = `${(file.size / 1024).toFixed(1)} KB`;
+      else sizeStr = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      setSelectedFile({
+        name: file.name,
+        size: sizeStr,
+        type: file.type || "application/octet-stream",
+        base64: base64String,
+      });
+      setDeliverableForm(prev => ({ ...prev, fileName: file.name }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadDeliverable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    const clientEmail = isAdmin ? deliverableForm.clientEmail.trim() : user.email;
+    
+    if (!clientEmail) {
+      showToast("Please specify the client email.", "error");
+      return;
+    }
+
+    if (!selectedFile && !deliverableForm.fileName) {
+      showToast("Please upload/select a file or specify a filename.", "error");
+      return;
+    }
+
+    setUploadingDeliverable(true);
+    try {
+      const newDeliverable: ProjectDeliverable = {
+        id: `del-${Date.now()}`,
+        clientEmail: clientEmail.toLowerCase(),
+        uploadedBy: user.email || "unknown",
+        uploadedByName: isAdmin ? "TSDC Engineering Team" : (user.displayName || user.email?.split("@")[0] || "Client"),
+        fileName: deliverableForm.fileName || selectedFile?.name || "unnamed_document",
+        fileSize: selectedFile?.size || "1.0 KB",
+        fileType: selectedFile?.type || "text/plain",
+        uploadedAt: new Date().toISOString(),
+        description: deliverableForm.description.trim() || "Project deliverable mockup or specification requirement.",
+        fileData: selectedFile?.base64 || "data:text/plain;base64,TW9ja3VwIG9yIHJlcXVpcmVtZW50cyBkZWxpdmVyYWJsZQ=="
+      };
+
+      await saveDeliverable(newDeliverable);
+      
+      setDeliverableForm({
+        clientEmail: "",
+        fileName: "",
+        description: "",
+      });
+      setSelectedFile(null);
+      setFileError(null);
+      
+      await loadAdminData();
+      showToast("Deliverable successfully uploaded and secured in client portal!", "success");
+    } catch (err) {
+      console.error("Error saving deliverable:", err);
+      showToast("Error uploading deliverable. Please check file size constraints.", "error");
+    } finally {
+      setUploadingDeliverable(false);
+    }
+  };
+
+  const handleDeleteDeliverable = async (id: string) => {
+    if (!confirm("Are you sure you want to securely delete this document? This action is irreversible.")) return;
+    try {
+      await deleteDeliverable(id);
+      await loadAdminData();
+    } catch (err) {
+      console.error("Error deleting deliverable:", err);
+    }
+  };
+
+  const handleManualApproveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetEmail = manualApprovalEmail.trim().toLowerCase();
+    if (!targetEmail) return;
+
+    setApprovingEmailProgress(true);
+    try {
+      const matchedInquiries = inquiries.filter(i => i.email.toLowerCase() === targetEmail);
+
+      if (matchedInquiries.length > 0) {
+        for (const inq of matchedInquiries) {
+          await approveInquiryProject(inq.id, true);
+        }
+        showToast(`Successfully approved project deliverables access for ${targetEmail}!`, "success");
+      } else {
+        await submitInquiry({
+          name: manualApprovalName.trim() || "Authorized Client",
+          email: targetEmail,
+          subject: "Project Deliverables Authorization",
+          message: "Account manually pre-authorized by Administrator for Project Deliverables access.",
+          projectApproved: true
+        });
+        showToast(`Successfully pre-authorized and approved project deliverables access for ${targetEmail}.`, "success");
+      }
+      setManualApprovalEmail("");
+      setManualApprovalName("");
+      await loadAdminData();
+    } catch (err) {
+      console.error("Failed to approve client email:", err);
+      showToast("An error occurred while approving the client email. Please try again.", "error");
+    } finally {
+      setApprovingEmailProgress(false);
+    }
+  };
+
+  const handleToggleProjectApprovalByEmail = async (clientEmail: string, currentApproved: boolean) => {
+    const action = currentApproved ? "revoke" : "grant";
+    if (!confirm(`Are you sure you want to ${action} Project Deliverables board access for ${clientEmail}?`)) {
+      return;
+    }
+
+    try {
+      const targetEmail = clientEmail.toLowerCase().trim();
+      const matchedInquiries = inquiries.filter(i => i.email.toLowerCase() === targetEmail);
+
+      if (matchedInquiries.length > 0) {
+        for (const inq of matchedInquiries) {
+          await approveInquiryProject(inq.id, !currentApproved);
+        }
+        showToast(`Successfully ${currentApproved ? "revoked" : "approved"} access for ${clientEmail}.`, "success");
+      } else {
+        if (!currentApproved) {
+          await submitInquiry({
+            name: "Authorized Client",
+            email: targetEmail,
+            subject: "Project Deliverables Authorization",
+            message: "Account manually pre-authorized by Administrator for Project Deliverables access.",
+            projectApproved: true
+          });
+          showToast(`Successfully approved access for ${clientEmail}.`, "success");
+        }
+      }
+      await loadAdminData();
+    } catch (err) {
+      console.error("Error toggling project approval:", err);
+      showToast("Failed to update project approval status.", "error");
+    }
+  };
+
+  const handleDownloadDeliverable = (del: ProjectDeliverable) => {
+    try {
+      const dataStr = del.fileData || "data:text/plain;base64,TW9ja3Vw";
+      
+      const matches = dataStr.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) {
+        const blob = new Blob([dataStr], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = del.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = del.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download file:", err);
+      showToast("Could not process and download this file format.", "error");
+    }
+  };
+
+  // --- DELIVERABLES CHAT & APPROVAL OPERATIONS ---
+  const handleToggleProjectApproval = async (id: string, currentApprovedStatus: boolean) => {
+    if (!isAdmin) {
+      showToast("Unauthorized: Only administrator can approve client projects.", "error");
+      return;
+    }
+    try {
+      const newStatus = !currentApprovedStatus;
+      await approveInquiryProject(id, newStatus);
+      setInquiries(inquiries.map(i => i.id === id ? { ...i, projectApproved: newStatus } : i));
+      showToast(`Project successfully ${newStatus ? "approved! The client can now securely access the Deliverables Portal." : "revoked."}`, "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to update project approval status.", "error");
+    }
+  };
+
+  const handleChatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit (1000 KB for database storage security)
+    if (file.size > 1000 * 1024) {
+      setChatFileError("File is too large. Maximum size is 1000 KB for database storage security.");
+      return;
+    }
+
+    setChatFileError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      
+      let sizeStr = "";
+      if (file.size < 1024) sizeStr = `${file.size} B`;
+      else if (file.size < 1024 * 1024) sizeStr = `${(file.size / 1024).toFixed(1)} KB`;
+      else sizeStr = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      setChatFileAttachment({
+        name: file.name,
+        size: sizeStr,
+        type: file.type || "application/octet-stream",
+        base64: base64String,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadChatFile = (fileName: string, fileData?: string) => {
+    if (!fileData) {
+      showToast("No file data attached to this message.", "warning");
+      return;
+    }
+    try {
+      const dataStr = fileData;
+      const matches = dataStr.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) {
+        const blob = new Blob([dataStr], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download chat file:", err);
+      showToast("Could not process and download this file format.", "error");
+    }
+  };
+
+  const handleSendDeliverablesMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    let chatEmail = "";
+    if (isAdmin) {
+      if (!selectedClientEmailForChat) {
+        showToast("Please select a client to chat with.", "warning");
+        return;
+      }
+      chatEmail = selectedClientEmailForChat;
+    } else {
+      if (!user.email) return;
+      chatEmail = user.email;
+    }
+
+    if (!deliverablesChatMessageText.trim() && !chatFileAttachment) {
+      return;
+    }
+
+    const senderName = isAdmin 
+      ? "TSDC Engineering Team" 
+      : (user.displayName || user.email?.split("@")[0] || "Client");
+
+    setSendingChatFile(true);
+    try {
+      await sendDeliverablesMessage(
+        chatEmail,
+        isAdmin ? "admin" : "client",
+        senderName,
+        deliverablesChatMessageText,
+        chatFileAttachment
+      );
+      
+      setDeliverablesChatMessageText("");
+      setChatFileAttachment(null);
+      setChatFileError(null);
+      
+      if (chatFileAttachment) {
+        await loadAdminData();
+      }
+    } catch (err) {
+      console.error("Error sending deliverables message:", err);
+      showToast("Failed to send message. Please try again.", "error");
+    } finally {
+      setSendingChatFile(false);
+    }
+  };
+
+  const handleToggleProjectStatus = async (inquiryId: string, currentStatus?: "progress" | "done") => {
+    const nextStatus = currentStatus === "done" ? "progress" : "done";
+    try {
+      await updateProjectStatus(inquiryId, nextStatus);
+      // Update local state immediately for fast feedback
+      setInquiries(prev => prev.map(i => i.id === inquiryId ? { ...i, projectStatus: nextStatus } : i));
+      showToast(`Project marked as ${nextStatus === "done" ? "Completed" : "In Progress"}!`, "success");
+    } catch (err) {
+      console.error("Failed to update project status:", err);
+      showToast("Failed to update project status. Please try again.", "error");
     }
   };
 
@@ -592,114 +1151,212 @@ export default function AdminView() {
         <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden space-y-6">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-cyan-500"></div>
  
-          <div className="text-center space-y-2">
-            <div className="h-12 w-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Login</h2>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Securely authenticate to review client inquiries, chat with customers in real-time, and manage dynamic site layouts.
-            </p>
-          </div>
-
-          {/* Toggle Tab */}
-          <div className="grid grid-cols-2 bg-slate-900 p-1 rounded-xl border border-slate-850">
-            <button
-              onClick={() => {
-                setAuthMode("login");
-                setAuthError(null);
-              }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                authMode === "login"
-                  ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setAuthMode("signup");
-                setAuthError(null);
-              }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                authMode === "signup"
-                  ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
-          {authError && (
-            <div className="bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-rose-200 text-[11px] leading-relaxed font-mono">
-              <p className="font-bold uppercase tracking-wider text-rose-400 mb-0.5">Authentication Error:</p>
-              {authError}
-            </div>
-          )}
-
-          {/* Email/Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g., somilsrivastav18@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200 font-mono"
-                />
+          {forgotPasswordMode ? (
+            <>
+              <div className="text-center space-y-2">
+                <div className="h-12 w-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                  <KeyRound className="h-6 w-6 animate-pulse" />
+                </div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Recover Password</h2>
+                <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                  Enter your registered email address, and we'll send you secure instructions to reset your master key.
+                </p>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Password</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200"
-                />
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={authSubmitting}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg cursor-pointer flex items-center justify-center gap-2"
-            >
-              {authSubmitting ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  {authMode === "login" ? "Signing In..." : "Creating Account..."}
-                </>
-              ) : (
-                <>
-                  <LogIn className="h-3.5 w-3.5" />
-                  {authMode === "login" ? "Launch Secure Session" : "Register Client Session"}
-                </>
+              {recoveryError && (
+                <div className="bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-rose-200 text-[11px] leading-relaxed font-mono">
+                  <p className="font-bold uppercase tracking-wider text-rose-400 mb-0.5">Recovery Error:</p>
+                  {recoveryError}
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Separator */}
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-850"></div>
-            <span className="flex-shrink mx-4 text-slate-600 text-[10px] uppercase font-bold tracking-widest font-mono">OR</span>
-            <div className="flex-grow border-t border-slate-850"></div>
-          </div>
+              {recoverySuccess && (
+                <div className="bg-emerald-950/40 border border-emerald-900/50 p-3 rounded-xl text-emerald-200 text-[11px] leading-relaxed font-mono">
+                  <p className="font-bold uppercase tracking-wider text-emerald-400 mb-0.5">Success:</p>
+                  {recoverySuccess}
+                </div>
+              )}
 
-          {/* Standard Google Login */}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-850 border border-slate-850 text-slate-200 transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md uppercase tracking-wider"
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="h-4 w-4" referrerPolicy="no-referrer" />
-            Sign In with Google
-          </button>
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Registered Email</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g., somilsrivastav18@gmail.com"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200 font-mono"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={recoverySubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {recoverySubmitting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      Sending Instructions...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-3.5 w-3.5" />
+                      Request Reset Link
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <button
+                onClick={() => {
+                  setForgotPasswordMode(false);
+                  setRecoverySuccess(null);
+                  setRecoveryError(null);
+                }}
+                className="w-full text-center text-xs font-mono text-cyan-400 hover:text-cyan-300 font-semibold transition-colors pt-2 block cursor-pointer"
+              >
+                ← Back to Sign In
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-center space-y-2">
+                <div className="h-12 w-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Login</h2>
+                <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                  Securely authenticate to review client inquiries, chat with customers in real-time, and manage dynamic site layouts.
+                </p>
+              </div>
+
+              {/* Toggle Tab */}
+              <div className="grid grid-cols-2 bg-slate-900 p-1 rounded-xl border border-slate-850">
+                <button
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError(null);
+                  }}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    authMode === "login"
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthMode("signup");
+                    setAuthError(null);
+                  }}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    authMode === "signup"
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-black"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              {authError && (
+                <div className="bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-rose-200 text-[11px] leading-relaxed font-mono">
+                  <p className="font-bold uppercase tracking-wider text-rose-400 mb-0.5">Authentication Error:</p>
+                  {authError}
+                </div>
+              )}
+
+              {/* Email/Password Form */}
+              <form onSubmit={handleEmailAuth} className="space-y-4">
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g., somilsrivastav18@gmail.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 px-4 text-xs text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-wider">Password</label>
+                      {authMode === "login" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForgotPasswordMode(true);
+                            setRecoveryEmail(email);
+                            setRecoveryError(null);
+                            setRecoverySuccess(null);
+                          }}
+                          className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors font-semibold cursor-pointer"
+                        >
+                          Forgot Password?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl py-2.5 pl-4 pr-12 text-xs text-slate-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={authSubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs tracking-wider uppercase shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {authSubmitting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      {authMode === "login" ? "Signing In..." : "Creating Account..."}
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-3.5 w-3.5" />
+                      {authMode === "login" ? "Launch Secure Session" : "Register Client Session"}
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Separator */}
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-slate-850"></div>
+                <span className="flex-shrink mx-4 text-slate-600 text-[10px] uppercase font-bold tracking-widest font-mono">OR</span>
+                <div className="flex-grow border-t border-slate-850"></div>
+              </div>
+
+              {/* Standard Google Login */}
+              <button
+                onClick={handleGoogleLogin}
+                className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-850 border border-slate-850 text-slate-200 transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md uppercase tracking-wider"
+              >
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="h-4 w-4" referrerPolicy="no-referrer" />
+                Sign In with Google
+              </button>
+            </>
+          )}
 
           {/* Privacy Footnote */}
           <p className="text-[10px] text-slate-600 text-center font-mono">
@@ -736,6 +1393,7 @@ export default function AdminView() {
             {isAdmin ? (
               [
                 { id: "site", label: "Page Content (CMS)", icon: Layers },
+                { id: "deliverables", label: `Project Deliverables (${deliverables.length})`, icon: FolderOpen },
                 { id: "inquiries", label: `User Inquiries (${inquiries.filter(i => i.status === "unread").length})`, icon: Inbox },
                 { id: "chats", label: `Live Chats (${chatSessions.filter(c => c.unreadCount > 0).length})`, icon: MessageSquare },
                 { id: "applications", label: `Job Applications (${applications.filter(a => a.status === "pending").length})`, icon: Users },
@@ -764,6 +1422,7 @@ export default function AdminView() {
               })
             ) : (
               [
+                { id: "client_deliverables", label: `Project Documents (${deliverables.length})`, icon: FolderOpen },
                 { id: "client_inquiries", label: `My Inquiries (${inquiries.length})`, icon: Inbox },
                 { id: "client_chats", label: `Support Chat`, icon: MessageSquare },
                 { id: "client_applications", label: `My Applications (${applications.length})`, icon: Users },
@@ -1047,6 +1706,18 @@ export default function AdminView() {
                         </button>
                       )}
                       
+                      <button
+                        onClick={() => handleToggleProjectApproval(inq.id, !!inq.projectApproved)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 cursor-pointer border transition-colors ${
+                          inq.projectApproved 
+                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25" 
+                            : "bg-amber-500/15 text-amber-400 border-amber-500/20 hover:bg-amber-500/25"
+                        }`}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {inq.projectApproved ? "Approved Project" : "Approve Project"}
+                      </button>
+
                       <button
                         onClick={() => {
                           setReplyingInquiry(inq);
@@ -1874,6 +2545,1150 @@ export default function AdminView() {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* =========================================
+            ADMIN TAB: PROJECT DELIVERABLES
+            ========================================= */}
+        {activeTab === "deliverables" && isAdmin && (
+          <div className="space-y-6" id="admin-deliverables-panel">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <FolderOpen className="h-6 w-6 text-cyan-400" />
+                  Client Project Deliverables Board
+                </h1>
+                <p className="text-xs text-slate-400">
+                  Manage technical requirements, design mockups, and client documents securely. All artifacts are fully encrypted.
+                </p>
+              </div>
+            </div>
+
+            {/* Elegant Sub-navigation */}
+            <div className="flex border-b border-slate-850 gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setAdminDeliverablesTab("files")}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  adminDeliverablesTab === "files"
+                    ? "border-cyan-500 text-cyan-400 bg-cyan-500/5 rounded-t-lg"
+                    : "border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-900/50"
+                }`}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Files & Uploads ({deliverables.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminDeliverablesTab("chat")}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  adminDeliverablesTab === "chat"
+                    ? "border-cyan-500 text-cyan-400 bg-cyan-500/5 rounded-t-lg"
+                    : "border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-900/50"
+                }`}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Secure Chat Workspace
+                {(() => {
+                  const totalUnreadDeliverablesCount = deliverablesChats.reduce((sum, c) => sum + (c.unreadCountAdmin || 0), 0);
+                  if (totalUnreadDeliverablesCount > 0) {
+                    return (
+                      <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                        {totalUnreadDeliverablesCount} NEW
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminDeliverablesTab("access")}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  adminDeliverablesTab === "access"
+                    ? "border-cyan-500 text-cyan-400 bg-cyan-500/5 rounded-t-lg"
+                    : "border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-900/50"
+                }`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Access Approvals ({inquiries.filter(i => i.projectApproved).length})
+              </button>
+            </div>
+
+            {/* TAB CONTENT: FILES */}
+            {adminDeliverablesTab === "files" && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+                {/* Left Column: Upload New Deliverable Form */}
+                <div className="lg:col-span-1 space-y-6">
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-900 pb-2">
+                      Upload Deliverable
+                    </h3>
+
+                    <form onSubmit={handleUploadDeliverable} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Client Email *</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="client@company.com"
+                          value={deliverableForm.clientEmail}
+                          onChange={(e) => setDeliverableForm({ ...deliverableForm, clientEmail: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300 font-mono"
+                        />
+                        <p className="text-[9px] text-slate-500 font-mono">Specify which client account can securely access this file.</p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Document Description *</label>
+                        <textarea
+                          required
+                          rows={3}
+                          placeholder="e.g. Figma wireframe mockup or Technical specifications requirements..."
+                          value={deliverableForm.description}
+                          onChange={(e) => setDeliverableForm({ ...deliverableForm, description: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300 leading-relaxed"
+                        />
+                      </div>
+
+                      {/* File Upload Area */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">File Artifact *</label>
+                        
+                        <div
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                            dragOver 
+                              ? "border-cyan-400 bg-cyan-950/10" 
+                              : selectedFile 
+                              ? "border-emerald-500/50 bg-emerald-950/5" 
+                              : "border-slate-800 hover:border-slate-700 bg-slate-900/50"
+                          }`}
+                          onClick={() => document.getElementById("admin-file-upload-input")?.click()}
+                        >
+                          <input
+                            id="admin-file-upload-input"
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileChange}
+                          />
+                          
+                          {selectedFile ? (
+                            <div className="space-y-2">
+                              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+                              <div className="text-xs font-bold text-white truncate max-w-[200px] mx-auto">
+                                {selectedFile.name}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                {selectedFile.size} • {selectedFile.type.split("/")[1]?.toUpperCase() || "FILE"}
+                              </div>
+                              <span className="text-[10px] text-cyan-400 hover:underline">Change File</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Upload className="h-8 w-8 text-slate-500 mx-auto animate-pulse" />
+                              <p className="text-xs text-slate-300 font-medium">Drag & drop files here, or <span className="text-cyan-400 font-bold">browse</span></p>
+                              <p className="text-[9px] text-slate-500">Supports PDF, TXT, PNG, JPG, ZIP (Max 800 KB)</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {fileError && (
+                          <p className="text-[10px] text-rose-400 font-mono mt-1">{fileError}</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={uploadingDeliverable || (!selectedFile && !deliverableForm.fileName)}
+                        className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-lg text-xs tracking-wider uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {uploadingDeliverable ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            Encrypting & Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-3.5 w-3.5" />
+                            Publish Deliverable
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Right Column: List of All Deliverables with Search/Filters */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                        Secured Documents Database ({deliverables.length})
+                      </h3>
+                      
+                      {/* Search filter for emails */}
+                      <div className="relative max-w-xs w-full">
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Filter by client email..."
+                          value={deliverableForm.clientEmail}
+                          onChange={(e) => setDeliverableForm({ ...deliverableForm, clientEmail: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-850 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+
+                    {deliverables.length === 0 ? (
+                      <div className="text-center py-12 text-slate-500 text-xs bg-slate-900/40 rounded-xl border border-slate-900">
+                        <FolderOpen className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                        <p>No deliverables matching the filter criteria.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-1">
+                        {deliverables
+                          .filter(del => !deliverableForm.clientEmail || del.clientEmail.toLowerCase().includes(deliverableForm.clientEmail.toLowerCase()))
+                          .map((del) => {
+                            const isPdf = del.fileName.endsWith('.pdf');
+                            const isImage = del.fileName.endsWith('.png') || del.fileName.endsWith('.jpg') || del.fileName.endsWith('.jpeg');
+                            const isZip = del.fileName.endsWith('.zip');
+                            
+                            return (
+                              <div 
+                                key={del.id}
+                                className="bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 transition-all hover:shadow-lg"
+                              >
+                                <div className="space-y-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-9 w-9 rounded-lg bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
+                                        {isPdf ? (
+                                          <FileText className="h-5 w-5 text-rose-400" />
+                                        ) : isImage ? (
+                                          <FileImage className="h-5 w-5 text-emerald-400" />
+                                        ) : isZip ? (
+                                          <FileArchive className="h-5 w-5 text-amber-400" />
+                                        ) : (
+                                          <Paperclip className="h-5 w-5 text-cyan-400" />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-xs font-bold text-white truncate max-w-[160px]" title={del.fileName}>
+                                          {del.fileName}
+                                        </h4>
+                                        <p className="text-[10px] text-slate-500 font-mono">
+                                          {del.fileSize} • {new Date(del.uploadedAt).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-right">
+                                      <span className="inline-block px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-slate-950 border border-slate-800 text-cyan-400">
+                                        {del.clientEmail.split("@")[0]}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <p className="text-xs text-slate-400 leading-normal line-clamp-2">
+                                    {del.description}
+                                  </p>
+                                </div>
+
+                                <div className="border-t border-slate-850 pt-3 flex items-center justify-between text-[10px]">
+                                  <span className="text-slate-500 font-mono truncate max-w-[120px]">
+                                    By: {del.uploadedByName}
+                                  </span>
+
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadDeliverable(del)}
+                                      className="p-1.5 bg-slate-950 border border-slate-850 text-cyan-400 hover:text-white hover:bg-slate-850 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                                      title="Secure Download"
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteDeliverable(del.id)}
+                                      className="p-1.5 bg-slate-950 border border-slate-850 text-rose-400 hover:text-rose-300 hover:bg-slate-850 rounded-lg transition-colors cursor-pointer"
+                                      title="Revoke / Delete"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT: CHAT */}
+            {adminDeliverablesTab === "chat" && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[550px] animate-fadeIn text-left">
+                
+                {/* Left Column (4 cols): Active Channels List with Unread Indicators & Status Toggles */}
+                <div className="lg:col-span-4 bg-slate-950 border border-slate-850 rounded-2xl p-4 flex flex-col justify-between max-h-[600px]" id="deliverables-chats-sidebar">
+                  <div className="space-y-4 overflow-y-auto flex-1 pr-1 scrollbar-thin scrollbar-thumb-slate-800">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">Project Channels</h3>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualEmailInput(!isManualEmailInput);
+                          setSelectedClientEmailForChat("");
+                        }}
+                        className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                      >
+                        {isManualEmailInput ? "List View" : "Type Custom"}
+                      </button>
+                    </div>
+
+                    {isManualEmailInput ? (
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono block">Custom Client Email</label>
+                        <input
+                          type="email"
+                          placeholder="e.g. client@example.com"
+                          value={selectedClientEmailForChat}
+                          onChange={(e) => setSelectedClientEmailForChat(e.target.value.trim().toLowerCase())}
+                          className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300 font-mono"
+                        />
+                        <p className="text-[9px] text-slate-500">Allows opening a workspace channel with any arbitrary client email address.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const emails = Array.from(new Set([
+                            ...inquiries.filter(i => i.projectApproved).map(i => i.email.toLowerCase()),
+                            ...deliverables.map(d => d.clientEmail.toLowerCase())
+                          ]));
+
+                          if (emails.length === 0) {
+                            return (
+                              <div className="text-center py-12 text-slate-600 text-xs">
+                                <FolderOpen className="h-8 w-8 text-slate-700 mx-auto mb-2 animate-pulse" />
+                                No approved project channels available. Create one in the Access Approvals tab!
+                              </div>
+                            );
+                          }
+
+                          return emails.map((email) => {
+                            const matchedInq = inquiries.find(i => i.email.toLowerCase() === email);
+                            const clientName = matchedInq?.name || "Pre-Approved Client";
+                            const projectStatusVal = matchedInq?.projectStatus || "progress";
+                            
+                            // Find deliverablesChatMetadata for this email
+                            const chatMeta = deliverablesChats.find(c => c.clientEmail === email);
+                            const lastMsgText = chatMeta?.lastMessage || "No message logged yet";
+                            const unreadCount = chatMeta?.unreadCountAdmin || 0;
+                            const isSelected = selectedClientEmailForChat === email;
+
+                            return (
+                              <div 
+                                key={email}
+                                className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-2 ${
+                                  isSelected 
+                                    ? "bg-slate-900 border-cyan-500/50" 
+                                    : "bg-slate-950 border-slate-850 hover:border-slate-800"
+                                }`}
+                              >
+                                {/* Clickable session select area */}
+                                <div 
+                                  onClick={() => {
+                                    setSelectedClientEmailForChat(email);
+                                    clearDeliverablesUnread(email, "admin");
+                                  }}
+                                  className="cursor-pointer space-y-1.5"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-xs text-white leading-tight truncate block max-w-[120px]">{clientName}</span>
+                                        {unreadCount > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[8px] font-black uppercase tracking-wider animate-pulse shrink-0">
+                                            {unreadCount} NEW
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[10px] text-slate-500 font-mono block truncate">{email}</span>
+                                    </div>
+                                    
+                                    {/* Small status indicator in sidebar list */}
+                                    {projectStatusVal === "done" ? (
+                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono uppercase shrink-0">
+                                        Done
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono uppercase shrink-0">
+                                        Active
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="text-[10px] text-slate-400 truncate leading-normal italic">{lastMsgText}</p>
+                                </div>
+
+                                {/* Project Done / Progress Control toggler - "make it easy for admin" */}
+                                {matchedInq && (
+                                  <div className="pt-2 border-t border-slate-900/60 flex items-center justify-between">
+                                    <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">Status Control</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleProjectStatus(matchedInq.id, projectStatusVal)}
+                                        className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase transition-all cursor-pointer border ${
+                                          projectStatusVal === "done"
+                                            ? "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
+                                            : "bg-gradient-to-r from-emerald-600 to-teal-500 border-transparent text-slate-950 font-black hover:opacity-90 shadow"
+                                        }`}
+                                      >
+                                        {projectStatusVal === "done" ? "Set Active" : "Mark Done"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column (8 cols): Active Thread Chat Console */}
+                <div className="lg:col-span-8 bg-slate-950 border border-slate-850 rounded-2xl p-4 flex flex-col justify-between max-h-[600px]" id="deliverables-chat-console">
+                  {selectedClientEmailForChat ? (
+                    <div className="flex-1 flex flex-col justify-between h-full space-y-4">
+                      
+                      {/* Thread Header with Project Information & Status Toggle */}
+                      <div className="border-b border-slate-900 pb-3 flex justify-between items-center text-xs text-slate-400 flex-wrap gap-2">
+                        {(() => {
+                          const matchedInq = inquiries.find(i => i.email.toLowerCase() === selectedClientEmailForChat);
+                          const clientName = matchedInq?.name || "Client";
+                          const projectStatusVal = matchedInq?.projectStatus || "progress";
+                          
+                          return (
+                            <>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap text-left">
+                                  <span className="font-bold text-white text-sm">
+                                    Chatting with: {clientName}
+                                  </span>
+                                  {projectStatusVal === "done" ? (
+                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold uppercase rounded-full">
+                                      Completed
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold uppercase rounded-full">
+                                      In Progress
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="block text-[10px] text-slate-500 font-mono text-left">
+                                  Channel: {selectedClientEmailForChat}
+                                </span>
+                              </div>
+
+                              {matchedInq && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-500 font-mono">Project status:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleProjectStatus(matchedInq.id, projectStatusVal)}
+                                    className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-all border rounded-lg cursor-pointer flex items-center gap-1.5 ${
+                                      projectStatusVal === "done"
+                                        ? "bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300"
+                                        : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black border-transparent"
+                                    }`}
+                                  >
+                                    {projectStatusVal === "done" ? (
+                                      <>Reopen Project</>
+                                    ) : (
+                                      <>Mark Completed</>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div className="flex-1 overflow-y-auto py-2 space-y-3 pr-1 scrollbar-thin scrollbar-thumb-slate-800">
+                        {deliverablesChatMessages.length === 0 ? (
+                          <div className="text-center py-12 text-slate-600 text-xs">
+                            <MessageSquare className="h-8 w-8 text-slate-700 mx-auto mb-2 animate-pulse" />
+                            No discussions logged yet. Send a secure handshake message or attachment to start!
+                          </div>
+                        ) : (
+                          deliverablesChatMessages.map((msg) => {
+                            const isMe = msg.sender === "admin";
+                            return (
+                              <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                                <span className="text-[9px] text-slate-500 mb-1 font-mono">{msg.senderName} ({msg.sender})</span>
+                                <div className={`max-w-[85%] rounded-xl px-3.5 py-2 text-xs leading-normal text-left ${
+                                  isMe 
+                                    ? "bg-cyan-500/10 border border-cyan-500/20 text-cyan-100 rounded-tr-none" 
+                                    : "bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-none"
+                                }`}>
+                                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                                  
+                                  {/* Chat message file attachment */}
+                                  {msg.fileName && (
+                                    <div className="mt-2.5 p-2 bg-slate-950/80 border border-slate-800 rounded-lg flex items-center justify-between gap-3 text-xs">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {msg.fileType?.includes("image") ? (
+                                          <FileImage className="h-4 w-4 text-cyan-400 shrink-0" />
+                                        ) : (
+                                          <FileText className="h-4 w-4 text-cyan-400 shrink-0" />
+                                        )}
+                                        <div className="min-w-0">
+                                          <p className="font-bold text-[11px] text-slate-200 truncate max-w-[150px]" title={msg.fileName}>{msg.fileName}</p>
+                                          <p className="text-[9px] text-slate-500 font-mono">{msg.fileSize}</p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownloadChatFile(msg.fileName!, msg.fileData)}
+                                        className="p-1.5 hover:bg-slate-850 text-cyan-400 hover:text-white rounded-md transition-colors cursor-pointer shrink-0"
+                                        title="Download Attachment"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[8px] text-slate-600 mt-0.5 font-mono">
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Chat Input & Attachment bar */}
+                      <form onSubmit={handleSendDeliverablesMessage} className="border-t border-slate-900 pt-3 space-y-2">
+                        {chatFileAttachment && (
+                          <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-2 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Paperclip className="h-3.5 w-3.5 text-cyan-400" />
+                              <span className="font-bold text-slate-300 truncate max-w-[200px]">{chatFileAttachment.name}</span>
+                              <span className="text-[9px] text-slate-500 font-mono">({chatFileAttachment.size})</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setChatFileAttachment(null)}
+                              className="p-1 rounded text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {chatFileError && (
+                          <p className="text-[10px] text-rose-400 font-mono">{chatFileError}</p>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById("admin-chat-file-input")?.click()}
+                            className="p-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                            title="Attach File to Send"
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </button>
+                          <input
+                            id="admin-chat-file-input"
+                            type="file"
+                            className="hidden"
+                            onChange={handleChatFileChange}
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="Type secure response regarding specifications..."
+                            value={deliverablesChatMessageText}
+                            onChange={(e) => setDeliverablesChatMessageText(e.target.value)}
+                            className="flex-1 bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg px-3 py-2 text-xs text-slate-300"
+                          />
+                          <button
+                            type="submit"
+                            disabled={sendingChatFile}
+                            className="p-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                          >
+                            {sendingChatFile ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="text-center py-24 text-slate-500 text-xs">
+                      <MessageSquare className="h-12 w-12 text-slate-700 mx-auto mb-3 animate-pulse" />
+                      <p className="font-bold text-slate-300 text-sm mb-1">No Project Channel Selected</p>
+                      <p className="text-slate-500 max-w-sm mx-auto">Please choose an active project channel or approved client from the list on the left to review messages, exchange assets, and toggle progress status.</p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB CONTENT: ACCESS CONTROL */}
+            {adminDeliverablesTab === "access" && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+                {/* Left Column: Authorize Email form */}
+                <div className="lg:col-span-1">
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div className="border-b border-slate-900 pb-2">
+                      <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-cyan-400" />
+                        Authorize Client Access
+                      </h3>
+                      <p className="text-[11px] text-slate-500 leading-normal mt-1">
+                        Pre-approve client emails or grant project folder access. Clients can log in to view specifications.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleManualApproveEmail} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Client Email Address *</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="client@company.com"
+                          value={manualApprovalEmail}
+                          onChange={(e) => setManualApprovalEmail(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300 font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Client Name (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Acme Corporation"
+                          value={manualApprovalName}
+                          onChange={(e) => setManualApprovalName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={approvingEmailProgress || !manualApprovalEmail}
+                        className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-lg text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        {approvingEmailProgress ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3.5 w-3.5" />
+                            Authorize Client Access
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Right Column: Authorized accounts list */}
+                <div className="lg:col-span-2">
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div className="border-b border-slate-900 pb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                        Currently Authorized Project Clients
+                      </h3>
+                      <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">
+                        {inquiries.filter(i => i.projectApproved).length} Approved
+                      </span>
+                    </div>
+
+                    <div className="max-h-[500px] overflow-y-auto pr-1 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-800">
+                      {Array.from(new Set(
+                        inquiries.filter(i => i.projectApproved).map(i => JSON.stringify({ email: i.email.toLowerCase(), name: i.name }))
+                      )).length === 0 ? (
+                        <div className="text-center py-12 text-slate-500 text-xs">
+                          <Lock className="h-8 w-8 text-slate-700 mx-auto mb-2" />
+                          <p>No custom clients authorized yet.</p>
+                          <p className="text-[11px] text-slate-600 mt-1">Submit the authorization form on the left to activate client portals.</p>
+                        </div>
+                      ) : (
+                        Array.from(new Set(
+                          inquiries.filter(i => i.projectApproved).map(i => JSON.stringify({ email: i.email.toLowerCase(), name: i.name }))
+                        )).map((itemStr: any) => {
+                          const item = JSON.parse(itemStr) as { email: string; name: string };
+                          return (
+                            <div key={item.email} className="bg-slate-900/60 border border-slate-850 p-3.5 rounded-xl flex items-center justify-between gap-4 text-xs">
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-200 font-mono truncate text-[11.5px]">{item.email}</p>
+                                <p className="text-[10px] text-slate-500 truncate mt-0.5">{item.name || "Authorized Client Account"}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleProjectApprovalByEmail(item.email, true)}
+                                className="text-[10px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 px-3 py-1.5 rounded-lg transition-colors border border-rose-500/10 cursor-pointer shrink-0"
+                              >
+                                Revoke
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* =========================================
+            CLIENT TAB: SECURE DOCUMENTS
+            ========================================= */}
+        {activeTab === "client_deliverables" && !isAdmin && (
+          <div className="space-y-6" id="client-deliverables-panel">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-850 pb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <FolderOpen className="h-6 w-6 text-cyan-400" />
+                  Secure Project Deliverables & Documents
+                </h1>
+                <p className="text-xs text-slate-400">
+                  Access design mockups, technical specifications, and system requirement deliverables published by our engineers.
+                </p>
+              </div>
+
+              {isProjectApproved && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 font-mono uppercase">Project Status:</span>
+                  {inquiries.find(i => i.projectApproved)?.projectStatus === "done" ? (
+                    <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold uppercase tracking-wider">
+                      <CheckCircle2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
+                      Completed
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full text-xs font-bold uppercase tracking-wider">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500 animate-ping shrink-0" />
+                      In Progress
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {!isProjectApproved ? (
+              <div className="bg-slate-950 border border-slate-850 rounded-2xl p-8 text-center max-w-2xl mx-auto space-y-4 my-12 shadow-xl">
+                <Lock className="h-12 w-12 text-rose-500 mx-auto animate-pulse" />
+                <h2 className="text-xl font-bold text-white">Project Deliverables Pending Approval</h2>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Your project environment is currently being initialized by our engineering team. 
+                  Once our administrators review your inquiry/specifications and mark the project as <strong>Approved</strong>, 
+                  this secure zone will unlock to let you review interactive wireframes, files, specs, and chat directly with our engineering team.
+                </p>
+                <div className="text-[10px] text-slate-500 font-mono bg-slate-900/60 inline-block px-4 py-1.5 rounded-lg border border-slate-800">
+                  Secure Client Handshake Status: PENDING_ADMIN_HANDSHAKE
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Elegant Client Sub-navigation */}
+                <div className="flex border-b border-slate-850 gap-2 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setClientDeliverablesTab("files")}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                      clientDeliverablesTab === "files"
+                        ? "border-cyan-500 text-cyan-400 bg-cyan-500/5 rounded-t-lg"
+                        : "border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-900/50"
+                    }`}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Files & Documents ({deliverables.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientDeliverablesTab("chat")}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                      clientDeliverablesTab === "chat"
+                        ? "border-cyan-500 text-cyan-400 bg-cyan-500/5 rounded-t-lg"
+                        : "border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-900/50"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Secure Discussion Channel
+                    {clientChatMeta && (clientChatMeta.unreadCountClient || 0) > 0 && (
+                      <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
+                        {clientChatMeta.unreadCountClient} NEW
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* CLIENT SUB-TAB: FILES & UPLOADS */}
+                {clientDeliverablesTab === "files" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+                    {/* Left Column: Client Upload Area */}
+                    <div className="lg:col-span-1 space-y-6">
+                      <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div className="space-y-1 border-b border-slate-900 pb-2">
+                          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                            Upload Reference File
+                          </h3>
+                          <p className="text-[11px] text-slate-500 leading-normal">
+                            Need to share feedback, sketches, or a technical requirements doc? Securely upload it directly to your engineering team.
+                          </p>
+                        </div>
+
+                        <form onSubmit={handleUploadDeliverable} className="space-y-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Short Description *</label>
+                            <textarea
+                              required
+                              rows={3}
+                              placeholder="Describe what this file contains (e.g., Client feedback on wireframes)..."
+                              value={deliverableForm.description}
+                              onChange={(e) => setDeliverableForm({ ...deliverableForm, description: e.target.value })}
+                              className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg p-2.5 text-xs text-slate-300 leading-relaxed"
+                            />
+                          </div>
+
+                          {/* Drag and Drop Zone */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-slate-500 font-mono">Select File *</label>
+                            <div
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={handleDrop}
+                              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                                dragOver 
+                                  ? "border-cyan-400 bg-cyan-950/10" 
+                                  : selectedFile 
+                                  ? "border-emerald-500/50 bg-emerald-950/5" 
+                                  : "border-slate-800 hover:border-slate-700 bg-slate-900/50"
+                              }`}
+                              onClick={() => document.getElementById("client-file-upload-input")?.click()}
+                            >
+                              <input
+                                id="client-file-upload-input"
+                                type="file"
+                                className="hidden"
+                                onChange={handleFileChange}
+                              />
+                              
+                              {selectedFile ? (
+                                <div className="space-y-2">
+                                  <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+                                  <div className="text-xs font-bold text-white truncate max-w-[200px] mx-auto">
+                                    {selectedFile.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 font-mono">
+                                    {selectedFile.size} • {selectedFile.type.split("/")[1]?.toUpperCase() || "FILE"}
+                                  </div>
+                                  <span className="text-[10px] text-cyan-400 hover:underline">Change File</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <Upload className="h-8 w-8 text-slate-500 mx-auto animate-pulse" />
+                                  <p className="text-xs text-slate-300 font-medium">Drag & drop files here, or <span className="text-cyan-400 font-bold">browse</span></p>
+                                  <p className="text-[9px] text-slate-500">PDF, TXT, PNG, JPG, ZIP (Max 800 KB)</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {fileError && (
+                              <p className="text-[10px] text-rose-400 font-mono mt-1">{fileError}</p>
+                            )}
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={uploadingDeliverable || !selectedFile}
+                            className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-50 text-slate-950 font-black rounded-lg text-xs tracking-wider uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            {uploadingDeliverable ? (
+                              <>
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                Encrypting & Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-3.5 w-3.5" />
+                                Upload to Engineering Team
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Deliverables list */}
+                    <div className="lg:col-span-2 space-y-4">
+                      <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-2">
+                          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                            My Project Folders ({deliverables.length})
+                          </h3>
+                          <div className="text-[10px] text-slate-500 font-mono bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-850">
+                            AES-256 Encrypted handshake
+                          </div>
+                        </div>
+
+                        {deliverables.length === 0 ? (
+                          <div className="text-center py-12 text-slate-500 text-xs bg-slate-900/40 rounded-xl border border-slate-900">
+                            <FolderOpen className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                            <p>No project documents or deliverables have been published yet.</p>
+                            <p className="text-[11px] text-slate-600 mt-1">Upload a requirements doc on the left to start your engineering pipeline!</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-1">
+                            {deliverables.map((del) => {
+                              const isPdf = del.fileName.endsWith('.pdf');
+                              const isImage = del.fileName.endsWith('.png') || del.fileName.endsWith('.jpg') || del.fileName.endsWith('.jpeg');
+                              const isZip = del.fileName.endsWith('.zip');
+                              const isClientUploaded = del.uploadedBy.toLowerCase() === user.email?.toLowerCase();
+                              
+                              return (
+                                <div 
+                                  key={del.id}
+                                  className="bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 transition-all hover:shadow-lg"
+                                >
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="h-9 w-9 rounded-lg bg-slate-950 border border-slate-850 flex items-center justify-center shrink-0">
+                                          {isPdf ? (
+                                            <FileText className="h-5 w-5 text-rose-400" />
+                                          ) : isImage ? (
+                                            <FileImage className="h-5 w-5 text-emerald-400" />
+                                          ) : isZip ? (
+                                            <FileArchive className="h-5 w-5 text-amber-400" />
+                                          ) : (
+                                            <Paperclip className="h-5 w-5 text-cyan-400" />
+                                          )}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <h4 className="text-xs font-bold text-white truncate max-w-[160px]" title={del.fileName}>
+                                            {del.fileName}
+                                          </h4>
+                                          <p className="text-[10px] text-slate-500 font-mono">
+                                            {del.fileSize} • {new Date(del.uploadedAt).toLocaleDateString()}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        {isClientUploaded ? (
+                                          <span className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                            My File
+                                          </span>
+                                        ) : (
+                                          <span className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                            TSDC Team
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <p className="text-xs text-slate-400 leading-normal line-clamp-2">
+                                      {del.description}
+                                    </p>
+                                  </div>
+
+                                  <div className="border-t border-slate-850 pt-3 flex items-center justify-between text-[10px]">
+                                    <span className="text-slate-500 font-mono">
+                                      By: {isClientUploaded ? "You" : "TSDC Engineering"}
+                                    </span>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownloadDeliverable(del)}
+                                        className="p-1.5 bg-slate-950 border border-slate-850 text-cyan-400 hover:text-white hover:bg-slate-850 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                                        title="Secure Download"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                        <span className="text-[9px] font-bold uppercase font-mono tracking-wider px-0.5">Get</span>
+                                      </button>
+                                      {isClientUploaded && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteDeliverable(del.id)}
+                                          className="p-1.5 bg-slate-950 border border-slate-850 text-rose-400 hover:text-rose-300 hover:bg-slate-850 rounded-lg transition-colors cursor-pointer"
+                                          title="Delete File"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CLIENT SUB-TAB: CHAT WORKSPACE */}
+                {clientDeliverablesTab === "chat" && (
+                  <div className="bg-slate-950 border border-slate-850 rounded-2xl p-6 shadow-xl flex flex-col h-[550px] max-w-4xl mx-auto animate-fadeIn">
+                    <div className="border-b border-slate-900 pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4.5 w-4.5 text-cyan-400" />
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+                            Direct Engineering Feedback Channel
+                          </h3>
+                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
+                            Discuss specifications and deliverables in real-time. Files uploaded here are archived instantly.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 font-mono uppercase">
+                        <Lock className="h-3 w-3" /> Encrypted
+                      </span>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto py-4 space-y-3 pr-1 scrollbar-thin scrollbar-thumb-slate-800">
+                      {deliverablesChatMessages.length === 0 ? (
+                        <div className="text-center py-12 text-slate-600 text-xs">
+                          <MessageSquare className="h-8 w-8 text-slate-700 mx-auto mb-2 animate-pulse" />
+                          No discussions logged. Share comments or upload reference files to get started!
+                        </div>
+                      ) : (
+                        deliverablesChatMessages.map((msg) => {
+                          const isMe = msg.sender === "client";
+                          return (
+                            <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                              <span className="text-[9px] text-slate-500 mb-1 font-mono">{msg.senderName}</span>
+                              <div className={`max-w-[85%] rounded-xl px-3.5 py-2 text-xs leading-normal ${
+                                isMe 
+                                  ? "bg-cyan-500/10 border border-cyan-500/20 text-cyan-100 rounded-tr-none" 
+                                  : "bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-none"
+                              }`}>
+                                <p className="whitespace-pre-wrap">{msg.text}</p>
+                                
+                                {/* Chat message file attachment */}
+                                {msg.fileName && (
+                                  <div className="mt-2.5 p-2 bg-slate-950/80 border border-slate-800 rounded-lg flex items-center justify-between gap-3 text-xs">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {msg.fileType?.includes("image") ? (
+                                        <FileImage className="h-4 w-4 text-cyan-400 shrink-0" />
+                                      ) : (
+                                        <FileText className="h-4 w-4 text-cyan-400 shrink-0" />
+                                      )}
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-[11px] text-slate-200 truncate max-w-[120px]" title={msg.fileName}>{msg.fileName}</p>
+                                        <p className="text-[9px] text-slate-500 font-mono">{msg.fileSize}</p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadChatFile(msg.fileName!, msg.fileData)}
+                                      className="p-1.5 hover:bg-slate-850 text-cyan-400 hover:text-white rounded-md transition-colors cursor-pointer shrink-0"
+                                      title="Download Attachment"
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[8px] text-slate-600 mt-0.5 font-mono">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat Input & Attachment bar */}
+                    <form onSubmit={handleSendDeliverablesMessage} className="border-t border-slate-900 pt-3 space-y-2">
+                      {chatFileAttachment && (
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-2 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Paperclip className="h-3.5 w-3.5 text-cyan-400" />
+                            <span className="font-bold text-slate-300 truncate max-w-[150px]">{chatFileAttachment.name}</span>
+                            <span className="text-[9px] text-slate-500 font-mono">({chatFileAttachment.size})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setChatFileAttachment(null)}
+                            className="p-1 rounded text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {chatFileError && (
+                        <p className="text-[10px] text-rose-400 font-mono">{chatFileError}</p>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById("client-chat-file-input")?.click()}
+                          className="p-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                          title="Attach Feedback / Sketch File"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </button>
+                        <input
+                          id="client-chat-file-input"
+                          type="file"
+                          className="hidden"
+                          onChange={handleChatFileChange}
+                        />
+
+                        <input
+                          type="text"
+                          placeholder="Type message regarding specifications..."
+                          value={deliverablesChatMessageText}
+                          onChange={(e) => setDeliverablesChatMessageText(e.target.value)}
+                          className="flex-1 bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-lg px-3 py-2 text-xs text-slate-300"
+                        />
+                        <button
+                          type="submit"
+                          disabled={sendingChatFile}
+                          className="p-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                        >
+                          {sendingChatFile ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

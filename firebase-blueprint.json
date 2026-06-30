@@ -132,6 +132,42 @@
         "contactAddress": { "type": "string" }
       },
       "required": ["id", "heroTitle", "heroSubtitle", "heroCTA", "aboutTitle", "aboutContent", "aboutStats", "stackTitle", "stackSubtitle", "contactEmail", "contactPhone", "contactAddress"]
+    },
+    "ProjectDeliverable": {
+      "title": "ProjectDeliverable",
+      "description": "A secure document deliverable",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "uploadedBy": { "type": "string" },
+        "uploadedByName": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "fileType": { "type": "string" },
+        "uploadedAt": { "type": "string" },
+        "description": { "type": "string" },
+        "fileData": { "type": "string" },
+        "downloadUrl": { "type": "string" }
+      },
+      "required": ["id", "clientEmail", "uploadedBy", "uploadedByName", "fileName", "fileSize", "fileType", "uploadedAt", "description"]
+    },
+    "DeliverablesMessage": {
+      "title": "DeliverablesMessage",
+      "description": "A chat message within the Project Deliverables section, optionally with a file attachment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "fileType": { "type": "string" },
+        "fileData": { "type": "string" }
+      },
+      "required": ["id", "sender", "senderName", "text", "timestamp"]
     }
   },
   "firestore": {
@@ -166,6 +202,14 @@
     "chat_sessions/{sessionId}/messages": {
       "schema": { "$ref": "#/entities/ChatMessage" },
       "description": "Chronological support channel chats log"
+    },
+    "deliverables": {
+      "schema": { "$ref": "#/entities/ProjectDeliverable" },
+      "description": "Secure document deliverables"
+    },
+    "deliverables_chats/{clientEmail}/messages": {
+      "schema": { "$ref": "#/entities/DeliverablesMessage" },
+      "description": "Chronological secure client project deliverables chat messages logs"
     }
   }
 }
